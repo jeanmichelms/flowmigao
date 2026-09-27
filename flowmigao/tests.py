@@ -58,6 +58,11 @@ class AcessibilidadeTests(TestCase):
                 self.assertIn('aria-live="polite"', html)
                 # Um único título principal por página
                 self.assertEqual(html.count('<h1'), 1)
+                # Barra com tamanho da fonte e alto contraste
+                self.assertIn('aria-label="Opções de acessibilidade"', html)
+                self.assertIn('id="fonte-aumentar"', html)
+                self.assertIn('id="fonte-diminuir"', html)
+                self.assertIn('id="alto-contraste" aria-pressed="false"', html)
 
     def test_titulo_da_aba_muda_conforme_a_pagina(self):
         titulos = {
