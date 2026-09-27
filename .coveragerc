@@ -1,0 +1,13 @@
+[run]
+source = .
+omit =
+    .venv/*
+    */migrations/*
+    */tests.py
+    manage.py
+    flowmigao/asgi.py
+    flowmigao/wsgi.py
+
+[report]
+show_missing = True
+skip_covered = False
