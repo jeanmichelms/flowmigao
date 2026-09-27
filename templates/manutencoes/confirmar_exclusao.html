@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
 
+{% block title %}Excluir Manutenção{% endblock %}
+
 {% block content %}
-<h2>Excluir Manutenção</h2>
+<h1>Excluir Manutenção</h1>
 <p>Tem certeza que deseja excluir a manutenção <strong>{{ object.descricao }}</strong>?</p>
 <form method="post">
     {% csrf_token %}

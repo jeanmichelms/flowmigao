@@ -1,29 +1,36 @@
 {% extends 'base.html' %}
 
+{% block title %}Veículo {{ veiculo.placa }}{% endblock %}
+
 {% block content %}
-<h2>Detalhes do Veículo</h2>
-<p><strong>ID:</strong> {{ veiculo.id }}</p>
-<p><strong>Cliente:</strong> {{ veiculo.cliente.nome|default:'-' }}</p>
-<p><strong>Marca:</strong> {{ veiculo.marca|default:'-' }}</p>
-<p><strong>Modelo:</strong> {{ veiculo.modelo|default:'-' }}</p>
-<p><strong>Ano:</strong> {{ veiculo.ano|default_if_none:'-' }}</p>
-<p><strong>Placa:</strong> {{ veiculo.placa|default:'-' }}</p>
-<p><strong>Cor:</strong> {{ veiculo.cor|default:'-' }}</p>
-<p><strong>Chassi:</strong> {{ veiculo.chassi|default:'-' }}</p>
-<p><strong>Data de Cadastro:</strong> {{ veiculo.data_cadastro|date:'d/m/Y H:i'|default:'-' }}</p>
+<h1>Detalhes do Veículo</h1>
+<dl class="detalhes">
+    <dt>ID</dt><dd>{{ veiculo.id }}</dd>
+    <dt>Cliente</dt><dd>{{ veiculo.cliente.nome|default:'-' }}</dd>
+    <dt>Marca</dt><dd>{{ veiculo.marca|default:'-' }}</dd>
+    <dt>Modelo</dt><dd>{{ veiculo.modelo|default:'-' }}</dd>
+    <dt>Ano</dt><dd>{{ veiculo.ano|default_if_none:'-' }}</dd>
+    <dt>Placa</dt><dd>{{ veiculo.placa|default:'-' }}</dd>
+    <dt>Cor</dt><dd>{{ veiculo.cor|default:'-' }}</dd>
+    <dt>Chassi</dt><dd>{{ veiculo.chassi|default:'-' }}</dd>
+    <dt>Data de Cadastro</dt><dd>{{ veiculo.data_cadastro|date:'d/m/Y H:i'|default:'-' }}</dd>
+</dl>
 <hr>
-<h3>Manutenções do Veículo</h3>
-<a class="btn" href="{% url 'manutencoes_novo' %}?veiculo={{ veiculo.id }}&origem=veiculo_detalhe">Nova Manutenção</a>
-<br><br>
-{% for manutencao in veiculo.manutencoes.all %}
-<p>
-    <strong>{{ manutencao.data_manutencao|date:'d/m/Y' }}</strong> - {{ manutencao.get_tipo_display }} - {{ manutencao.descricao|default:'-' }}
-    {% if manutencao.valor %} - R$ {{ manutencao.valor }}{% endif %}
-    {% if manutencao.data_proxima_manutencao %}<br><small>Próxima prevista: {{ manutencao.data_proxima_manutencao|date:'d/m/Y' }}</small>{% endif %}
-</p>
-{% empty %}
-<p>Nenhuma manutenção cadastrada para este veículo.</p>
-{% endfor %}
+<h2>Manutenções do Veículo</h2>
+<div class="acoes-topo">
+    <a class="btn" href="{% url 'manutencoes_novo' %}?veiculo={{ veiculo.id }}&origem=veiculo_detalhe">Nova Manutenção</a>
+</div>
+<ul>
+    {% for manutencao in veiculo.manutencoes.all %}
+    <li>
+        <strong>{{ manutencao.data_manutencao|date:'d/m/Y' }}</strong> - {{ manutencao.get_tipo_display }} - {{ manutencao.descricao|default:'-' }}
+        {% if manutencao.valor %} - R$ {{ manutencao.valor }}{% endif %}
+        {% if manutencao.data_proxima_manutencao %}<br><small>Próxima prevista: {{ manutencao.data_proxima_manutencao|date:'d/m/Y' }}</small>{% endif %}
+    </li>
+    {% empty %}
+    <li>Nenhuma manutenção cadastrada para este veículo.</li>
+    {% endfor %}
+</ul>
 <a class="btn" href="{% url 'veiculos_editar' veiculo.id %}">Editar</a>
 <a class="btn btn-secondary" href="{% url 'veiculos_lista' %}">Voltar</a>
 {% endblock %}

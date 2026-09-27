@@ -1,17 +1,21 @@
 {% extends 'base.html' %}
 
+{% block title %}Manutenção {{ manutencao.id }}{% endblock %}
+
 {% block content %}
-<h2>Detalhes da Manutenção</h2>
-<p><strong>ID:</strong> {{ manutencao.id }}</p>
-<p><strong>Veículo:</strong> {{ manutencao.veiculo.cliente.nome }} ({{ manutencao.veiculo.cliente.cpf }}) - {{ manutencao.veiculo.marca }} - {{ manutencao.veiculo.modelo }} ({{ manutencao.veiculo.ano }}) - {{ manutencao.veiculo.placa }}</p>
-<p><strong>Tipo:</strong> {{ manutencao.get_tipo_display }}</p>
-<p><strong>Descrição:</strong> {{ manutencao.descricao }}</p>
-<p><strong>Data da manutenção:</strong> {{ manutencao.data_manutencao|date:'d/m/Y' }}</p>
-<p><strong>Próxima Manutenção Prevista:</strong> {{ manutencao.data_proxima_manutencao|date:'d/m/Y'|default:'-' }}</p>
-<p><strong>Quilometragem:</strong> {{ manutencao.quilometragem|default:'-' }}</p>
-<p><strong>Valor:</strong> R$ {{ manutencao.valor|default:'-' }}</p>
-<p><strong>Observações:</strong> {{ manutencao.observacoes|default:'-' }}</p>
-<p><strong>Data de Cadastro:</strong> {{ manutencao.data_cadastro }}</p>
+<h1>Detalhes da Manutenção</h1>
+<dl class="detalhes">
+    <dt>ID</dt><dd>{{ manutencao.id }}</dd>
+    <dt>Veículo</dt><dd>{{ manutencao.veiculo.cliente.nome }} ({{ manutencao.veiculo.cliente.cpf }}) - {{ manutencao.veiculo.marca }} - {{ manutencao.veiculo.modelo }} ({{ manutencao.veiculo.ano }}) - {{ manutencao.veiculo.placa }}</dd>
+    <dt>Tipo</dt><dd>{{ manutencao.get_tipo_display }}</dd>
+    <dt>Descrição</dt><dd>{{ manutencao.descricao }}</dd>
+    <dt>Data da manutenção</dt><dd>{{ manutencao.data_manutencao|date:'d/m/Y' }}</dd>
+    <dt>Próxima Manutenção Prevista</dt><dd>{{ manutencao.data_proxima_manutencao|date:'d/m/Y'|default:'-' }}</dd>
+    <dt>Quilometragem</dt><dd>{{ manutencao.quilometragem|default:'-' }}</dd>
+    <dt>Valor</dt><dd>R$ {{ manutencao.valor|default:'-' }}</dd>
+    <dt>Observações</dt><dd>{{ manutencao.observacoes|default:'-' }}</dd>
+    <dt>Data de Cadastro</dt><dd>{{ manutencao.data_cadastro }}</dd>
+</dl>
 
 <a class="btn" href="{% url 'manutencoes_editar' manutencao.id %}">Editar</a>
 <a class="btn btn-secondary" href="{% url 'manutencoes_lista' %}">Voltar</a>
@@ -19,74 +23,69 @@
 <hr>
 <div class="pecas-layout">
     <!-- Lista de Peças -->
-    <div class="pecas-lista">
-        <h3>Peças Utilizadas</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Peça</th>
-                    <th>Qtd</th>
-                    <th>Custo Unit.</th>
-                    <th>Total</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in pecas_usadas %}
-                <tr>
-                    <td>{{ item.peca }}</td>
-                    <td>{{ item.quantidade }}</td>
-                    <td>R$ {{ item.peca.preco_custo }}</td>
-                    <td>R$ {{ item.valor_total_custo }}</td>
-                    <td>
-                        <form method="post" action="{% url 'pecas_usadas_remover' item.pk %}" onsubmit="return confirm('Remover {{ item.peca|escapejs }} desta manutenção?');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger btn-pequeno">Remover</button>
-                        </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5">Nenhuma peça registrada.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            {% if pecas_usadas %}
-            <tfoot>
-                <tr>
-                    <th colspan="3">Custo total com peças</th>
-                    <th>R$ {{ total_pecas|floatformat:2 }}</th>
-                    <th></th>
-                </tr>
-            </tfoot>
-            {% endif %}
-        </table>
-    </div>
+    <section class="pecas-lista" aria-labelledby="titulo-pecas-usadas">
+        <h2 id="titulo-pecas-usadas">Peças Utilizadas</h2>
+        <div class="table-responsive">
+            <table>
+                <caption class="visually-hidden">Peças usadas nesta manutenção</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Peça</th>
+                        <th scope="col"><abbr title="Quantidade">Qtd</abbr></th>
+                        <th scope="col">Custo Unit.</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in pecas_usadas %}
+                    <tr>
+                        <td>{{ item.peca }}</td>
+                        <td>{{ item.quantidade }}</td>
+                        <td>R$ {{ item.peca.preco_custo }}</td>
+                        <td>R$ {{ item.valor_total_custo }}</td>
+                        <td>
+                            <form method="post" action="{% url 'pecas_usadas_remover' item.pk %}" onsubmit="return confirm('Remover {{ item.peca|escapejs }} desta manutenção?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-pequeno">Remover<span class="visually-hidden"> {{ item.peca }}</span></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5">Nenhuma peça registrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if pecas_usadas %}
+                <tfoot>
+                    <tr>
+                        <th scope="row" colspan="3">Custo total com peças</th>
+                        <td><strong>R$ {{ total_pecas|floatformat:2 }}</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </section>
 
     <!-- Formulário para adicionar peça -->
-    <div class="pecas-form">
-        <h3>Adicionar Peça</h3>
+    <section class="pecas-form" aria-labelledby="titulo-adicionar-peca">
+        <h2 id="titulo-adicionar-peca">Adicionar Peça</h2>
         {% if form_peca.fields.peca.queryset.exists %}
+        {% include 'includes/resumo_erros.html' with form=form_peca %}
         <form method="POST">
             {% csrf_token %}
-            {% if form_peca.non_field_errors %}<div class="field-error">{{ form_peca.non_field_errors }}</div>{% endif %}
-            <div class="form-group">
-                <label for="{{ form_peca.peca.id_for_label }}">Peça</label>
-                {{ form_peca.peca }}
-                {% if form_peca.peca.errors %}<div class="field-error">{{ form_peca.peca.errors|join:', ' }}</div>{% endif %}
-            </div>
-            <div class="form-group">
-                <label for="{{ form_peca.quantidade.id_for_label }}">Quantidade</label>
-                {{ form_peca.quantidade }}
-                {% if form_peca.quantidade.errors %}<div class="field-error">{{ form_peca.quantidade.errors|join:', ' }}</div>{% endif %}
-            </div>
+            {% include 'includes/campo.html' with campo=form_peca.peca %}
+            {% include 'includes/campo.html' with campo=form_peca.quantidade %}
             <button type="submit" class="btn">Incluir Peça</button>
         </form>
         {% else %}
         <p>Nenhuma peça cadastrada ainda.</p>
         {% endif %}
         <p><a href="{% url 'pecas_nova' %}?manutencao={{ manutencao.id }}">+ Cadastrar nova peça</a></p>
-    </div>
+    </section>
 </div>
 
 <style>
@@ -97,20 +96,16 @@
     }
     .pecas-lista {
         flex: 2 1 400px;
+        min-width: 0;
     }
     .pecas-form {
         flex: 1 1 260px;
     }
-    .form-group {
-        margin-bottom: 16px;
+    .pecas-layout h2 {
+        font-size: 1.2rem;
     }
     .btn-pequeno {
         padding: 6px 10px;
-    }
-    .field-error {
-        color: #b91c1c;
-        margin-top: 6px;
-        font-size: 0.95rem;
     }
 </style>
 {% endblock %}

@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
 {% load static %} <!-- Carrega os arquivos estáticos -->
 
+{% block title %}{% if object %}Editar Veículo{% else %}Novo Veículo{% endif %}{% endblock %}
+
 {% block content %}
-<h2>{% if object %}Editar Veículo{% else %}Novo Veículo{% endif %}</h2>
+<h1>{% if object %}Editar Veículo{% else %}Novo Veículo{% endif %}</h1>
+{% include 'includes/resumo_erros.html' with form=form %}
+<p class="aviso-obrigatorio">Campos marcados com <span class="obrigatorio">*</span> são obrigatórios.</p>
 <form method="post">
     {% csrf_token %}
 
-    {% if form.non_field_errors %}
-        <div class="error-list">{{ form.non_field_errors }}</div>
-    {% endif %}
-
     <div class="form-group">
-        <label for="id_cliente_busca">Cliente</label>
+        <label for="id_cliente_busca">Cliente <span class="obrigatorio" aria-hidden="true">*</span></label>
         {{ form.cliente }}
         <div class="cliente-selector">
             <input
@@ -20,69 +20,52 @@
                 value="{% if form.instance.pk and form.instance.cliente %}{{ form.instance.cliente.nome }} ({{ form.instance.cliente.cpf }}){% elif selected_cliente %}{{ selected_cliente.nome }} ({{ selected_cliente.cpf }}){% elif form.initial.cliente %}{{ form.initial.cliente.nome }} ({{ form.initial.cliente.cpf }}){% endif %}"
                 placeholder="Selecione um cliente pela lupa"
                 readonly
+                aria-required="true"
+                aria-describedby="id_cliente_busca_ajuda{% if form.cliente.errors %} id_cliente_error{% endif %}"
+                {% if form.cliente.errors %}aria-invalid="true"{% endif %}
             >
-            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-cliente" aria-label="Buscar cliente">🔍</button>
+            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-cliente" aria-haspopup="dialog">
+                <span aria-hidden="true">🔍</span><span class="visually-hidden">Buscar cliente</span>
+            </button>
         </div>
-        {% if form.cliente.errors %}<div class="field-error">{{ form.cliente.errors|join:', ' }}</div>{% endif %}
+        <div class="ajuda" id="id_cliente_busca_ajuda">Use o botão de busca (lupa) para escolher o cliente.</div>
+        {% if form.cliente.errors %}<div class="field-error" id="id_cliente_error">{{ form.cliente.errors|join:' ' }}</div>{% endif %}
     </div>
 
-    <div class="form-group">
-        <label for="id_marca">Marca</label>
-        {{ form.marca }}
-        {% if form.marca.errors %}<div class="field-error">{{ form.marca.errors|join:', ' }}</div>{% endif %}
-    </div>
-    <div class="form-group">
-        <label for="id_modelo">Modelo</label>
-        {{ form.modelo }}
-        {% if form.modelo.errors %}<div class="field-error">{{ form.modelo.errors|join:', ' }}</div>{% endif %}
-    </div>
-    <div class="form-group">
-        <label for="id_ano">Ano</label>
-        {{ form.ano }}
-        {% if form.ano.errors %}<div class="field-error">{{ form.ano.errors|join:', ' }}</div>{% endif %}
-    </div>
-    <div class="form-group">
-        <label for="id_placa">Placa</label>
-        {{ form.placa }}
-        {% if form.placa.errors %}<div class="field-error">{{ form.placa.errors|join:', ' }}</div>{% endif %}
-    </div>
-    <div class="form-group">
-        <label for="id_cor">Cor</label>
-        {{ form.cor }}
-        {% if form.cor.errors %}<div class="field-error">{{ form.cor.errors|join:', ' }}</div>{% endif %}
-    </div>
-    <div class="form-group">
-        <label for="id_chassi">Chassi</label>
-        {{ form.chassi }}
-        {% if form.chassi.errors %}<div class="field-error">{{ form.chassi.errors|join:', ' }}</div>{% endif %}
-    </div>
+    {% include 'includes/campo.html' with campo=form.marca %}
+    {% include 'includes/campo.html' with campo=form.modelo %}
+    {% include 'includes/campo.html' with campo=form.ano %}
+    {% include 'includes/campo.html' with campo=form.placa %}
+    {% include 'includes/campo.html' with campo=form.cor %}
+    {% include 'includes/campo.html' with campo=form.chassi %}
 
     <button class="btn" type="submit">Salvar</button>
     <a class="btn btn-secondary" href="{{ cancel_url }}">Cancelar</a>
 </form>
 
-<div class="modal-overlay" id="modal-cliente" hidden aria-hidden="true">
-    <div class="modal-content">
+<div class="modal-overlay" id="modal-cliente" hidden>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-cliente">
         <div class="modal-header">
-            <h3>Pesquisar cliente</h3>
+            <h2 id="titulo-modal-cliente">Pesquisar cliente</h2>
             <button type="button" class="btn btn-secondary btn-fechar" id="fechar-modal-cliente">Fechar</button>
         </div>
 
         <div class="form-group">
-            <label for="filtro-cliente">Buscar por ID, CPF, nome, email ou telefone</label>
-            <input type="text" id="filtro-cliente" placeholder="Digite para filtrar clientes">
+            <label for="filtro-cliente">Buscar por ID, CPF, nome, e-mail ou telefone</label>
+            <input type="search" id="filtro-cliente" placeholder="Digite para filtrar clientes">
         </div>
 
         <div class="table-responsive">
             <table>
+                <caption class="visually-hidden">Resultado da pesquisa de clientes</caption>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
-                        <th>CPF</th>
-                        <th>Email</th>
-                        <th>Telefone</th>
-                        <th>Ação</th>
+                        <th scope="col">ID</th>
+                        <th scope="col">Nome</th>
+                        <th scope="col">CPF</th>
+                        <th scope="col">E-mail</th>
+                        <th scope="col">Telefone</th>
+                        <th scope="col">Ação</th>
                     </tr>
                 </thead>
                 <tbody id="resultado-clientes">
@@ -96,9 +79,6 @@
 </div>
 
 <style>
-    .form-group {
-        margin-bottom: 16px;
-    }
     .cliente-selector {
         display: flex;
         gap: 10px;
@@ -134,6 +114,7 @@
         border-radius: 8px;
         padding: 24px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        box-sizing: border-box;
     }
     .modal-header {
         display: flex;
@@ -142,16 +123,12 @@
         gap: 12px;
         margin-bottom: 16px;
     }
+    .modal-header h2 {
+        font-size: 1.3rem;
+        margin: 0;
+    }
     .btn-fechar {
         width: auto;
-    }
-    .table-responsive {
-        overflow-x: auto;
-    }
-    .field-error, .error-list {
-        color: #b91c1c;
-        margin-top: 6px;
-        font-size: 0.95rem;
     }
     .btn-selecionar {
         width: auto;
@@ -161,7 +138,7 @@
 
 <script>
     (function () {
-        const modal = document.getElementById('modal-cliente');
+        const modalEl = document.getElementById('modal-cliente');
         const abrirModalBtn = document.getElementById('abrir-modal-cliente');
         const fecharModalBtn = document.getElementById('fechar-modal-cliente');
         const filtroInput = document.getElementById('filtro-cliente');
@@ -170,6 +147,13 @@
         const clienteBuscaInput = document.getElementById('id_cliente_busca');
         const buscarUrl = "{% url 'veiculos_buscar_clientes' %}";
         let debounceTimer = null;
+
+        const modal = FlowMigao.criarModal(modalEl, {
+            focoInicial: filtroInput,
+            aoAbrir: function () {
+                buscarClientes(filtroInput.value);
+            },
+        });
 
         function escapeHtml(valor) {
             return String(valor ?? '')
@@ -180,25 +164,10 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function abrirModal() {
-            modal.hidden = false;
-            modal.setAttribute('aria-hidden', 'false');
-            modal.classList.add('is-open');
-            document.body.style.overflow = 'hidden';
-            filtroInput.focus();
-            buscarClientes(filtroInput.value);
-        }
-
-        function fecharModal() {
-            modal.classList.remove('is-open');
-            modal.hidden = true;
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-        }
-
         function renderResultados(clientes) {
             if (!clientes.length) {
                 resultadoBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado.</td></tr>';
+                FlowMigao.anunciar('Nenhum cliente encontrado.');
                 return;
             }
 
@@ -211,17 +180,22 @@
                         <td>${escapeHtml(cliente.cpf)}</td>
                         <td>${escapeHtml(cliente.email)}</td>
                         <td>${escapeHtml(cliente.telefone)}</td>
-                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(cliente.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar</button></td>
+                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(cliente.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar<span class="visually-hidden"> ${escapeHtml(cliente.nome)}</span></button></td>
                     </tr>
                 `;
             }).join('');
+
+            FlowMigao.anunciar(
+                clientes.length === 1 ? '1 cliente encontrado.' : `${clientes.length} clientes encontrados.`
+            );
 
             resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
                 botao.addEventListener('click', function (event) {
                     event.preventDefault();
                     clienteHiddenInput.value = this.dataset.id;
                     clienteBuscaInput.value = this.dataset.resumo;
-                    fecharModal();
+                    modal.fechar();
+                    FlowMigao.anunciar(`Cliente selecionado: ${this.dataset.resumo}.`);
                 });
             });
         }
@@ -243,22 +217,17 @@
                 })
                 .catch(function () {
                     resultadoBody.innerHTML = '<tr><td colspan="6">Erro ao buscar clientes.</td></tr>';
+                    FlowMigao.anunciar('Erro ao buscar clientes.');
                 });
         }
 
         abrirModalBtn.addEventListener('click', function (event) {
             event.preventDefault();
-            abrirModal();
+            modal.abrir();
         });
         fecharModalBtn.addEventListener('click', function (event) {
             event.preventDefault();
-            fecharModal();
-        });
-
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal) {
-                fecharModal();
-            }
+            modal.fechar();
         });
 
         filtroInput.addEventListener('input', function () {
@@ -268,15 +237,9 @@
                 buscarClientes(valor);
             }, 250);
         });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && !modal.hidden) {
-                fecharModal();
-            }
-        });
     })();
 </script>
 
 <!-- Chama o script da FIPE -->
-<script src="{% static 'js/fipe.js' %}"></script> 
+<script src="{% static 'js/fipe.js' %}"></script>
 {% endblock %}
