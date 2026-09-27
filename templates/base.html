@@ -46,8 +46,8 @@
             text-underline-offset: 4px;
         }
         .container {
-            width: 90%;
-            max-width: 1100px;
+            width: 95%;
+            max-width: 1400px;
             margin: 30px auto;
             background: white;
             padding: 24px;
@@ -86,6 +86,8 @@
             border: none;
             cursor: pointer;
             font-size: 1rem;
+            /* Espaço vertical quando os botões quebram linha e ficam um sobre o outro */
+            margin: 3px 0;
         }
         .btn-danger {
             background: #dc2626;
@@ -168,6 +170,12 @@
             margin: 0;
         }
         @media (max-width: 600px) {
+            /* No celular, aproveita quase toda a largura da tela */
+            .container {
+                width: auto;
+                margin: 16px;
+                padding: 16px;
+            }
             .detalhes {
                 grid-template-columns: 1fr;
             }
@@ -221,6 +229,135 @@
         .pular-conteudo:focus {
             top: 16px;
         }
+
+        /* Barra de acessibilidade (tamanho da fonte e alto contraste) */
+        .topo {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px 16px;
+        }
+        .barra-acessibilidade {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .barra-acessibilidade button {
+            background: transparent;
+            color: white;
+            border: 1px solid #9ca3af;
+            border-radius: 6px;
+            padding: 6px 10px;
+            min-width: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .barra-acessibilidade button:hover {
+            background: #374151;
+        }
+        .barra-acessibilidade button[aria-pressed="true"] {
+            background: #fbbf24;
+            color: #111827;
+            border-color: #fbbf24;
+        }
+        header button:focus-visible {
+            outline-color: #fbbf24;
+        }
+
+        /* Tamanho da fonte: todos os tamanhos usam rem, então basta mudar a raiz */
+        html[data-fonte="1"] { font-size: 112.5%; }
+        html[data-fonte="2"] { font-size: 125%; }
+        html[data-fonte="3"] { font-size: 150%; }
+
+        /* Alto contraste: fundo preto, texto branco, links e botões em amarelo.
+           !important para sobrepor também os estilos próprios de cada página. */
+        html.alto-contraste body,
+        html.alto-contraste header,
+        html.alto-contraste .container,
+        html.alto-contraste .modal-content,
+        html.alto-contraste .card-resumo,
+        html.alto-contraste table,
+        html.alto-contraste th,
+        html.alto-contraste td {
+            background: #000 !important;
+            color: #fff !important;
+            box-shadow: none !important;
+        }
+        html.alto-contraste .container,
+        html.alto-contraste .modal-content,
+        html.alto-contraste .card-resumo,
+        html.alto-contraste table,
+        html.alto-contraste th,
+        html.alto-contraste td,
+        html.alto-contraste hr {
+            border: 1px solid #fff !important;
+        }
+        html.alto-contraste header {
+            border-bottom: 2px solid #fff !important;
+        }
+        html.alto-contraste .modal-overlay {
+            background: rgba(0, 0, 0, 0.85) !important;
+        }
+        html.alto-contraste a,
+        html.alto-contraste .marca,
+        html.alto-contraste nav a {
+            color: #ff0 !important;
+            text-decoration: underline !important;
+        }
+        html.alto-contraste .btn,
+        html.alto-contraste .barra-acessibilidade button {
+            background: #000 !important;
+            color: #ff0 !important;
+            border: 2px solid #ff0 !important;
+            text-decoration: none !important;
+        }
+        html.alto-contraste .btn:hover,
+        html.alto-contraste .barra-acessibilidade button:hover,
+        html.alto-contraste .barra-acessibilidade button[aria-pressed="true"] {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+        html.alto-contraste input,
+        html.alto-contraste select,
+        html.alto-contraste textarea {
+            background: #000 !important;
+            color: #fff !important;
+            border: 2px solid #fff !important;
+        }
+        html.alto-contraste input::placeholder,
+        html.alto-contraste textarea::placeholder {
+            color: #ccc !important;
+        }
+        html.alto-contraste input[aria-invalid="true"],
+        html.alto-contraste select[aria-invalid="true"],
+        html.alto-contraste textarea[aria-invalid="true"] {
+            border: 3px dashed #ff8080 !important;
+        }
+        html.alto-contraste .ajuda,
+        html.alto-contraste .aviso-obrigatorio {
+            color: #fff !important;
+        }
+        html.alto-contraste .field-error,
+        html.alto-contraste .error-list,
+        html.alto-contraste .mensagem-erro,
+        html.alto-contraste .obrigatorio,
+        html.alto-contraste .resumo-erros h2,
+        html.alto-contraste .resumo-erros a {
+            color: #ff8080 !important;
+        }
+        html.alto-contraste .resumo-erros {
+            border-color: #ff8080 !important;
+        }
+        html.alto-contraste .pular-conteudo {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+        html.alto-contraste :focus-visible {
+            outline: 3px solid #0ff !important;
+            outline-offset: 2px;
+        }
     </style>
     <script src="{% static 'js/acessibilidade.js' %}"></script>
 </head>
@@ -228,7 +365,17 @@
     <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
 
     <header>
-        <a class="marca" href="{% url 'home' %}">FlowMigao</a>
+        <div class="topo">
+            <a class="marca" href="{% url 'home' %}">FlowMigao</a>
+            <div class="barra-acessibilidade" role="group" aria-label="Opções de acessibilidade">
+                <button type="button" id="fonte-diminuir" aria-label="Diminuir tamanho da fonte">A−</button>
+                <button type="button" id="fonte-padrao" aria-label="Tamanho de fonte padrão">A</button>
+                <button type="button" id="fonte-aumentar" aria-label="Aumentar tamanho da fonte">A+</button>
+                <button type="button" id="alto-contraste" aria-pressed="false">
+                    <span aria-hidden="true">◐</span> Alto contraste
+                </button>
+            </div>
+        </div>
         <nav aria-label="Menu principal">
             {% with rota=request.resolver_match.url_name|default:'' %}
             <ul>

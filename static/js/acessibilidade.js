@@ -1,5 +1,6 @@
 // acessibilidade.js
-// Funções compartilhadas de acessibilidade: anúncios para leitores de tela e modais acessíveis.
+// Funções compartilhadas de acessibilidade: anúncios para leitores de tela, modais acessíveis
+// e preferências de leitura (tamanho da fonte e alto contraste).
 
 (function () {
     const SELETOR_FOCAVEL = [
@@ -122,8 +123,89 @@
         return { abrir: abrir, fechar: fechar, estaAberto: estaAberto };
     }
 
-    // Se o formulário voltou com erros, leva o foco ao resumo para que ele seja lido primeiro
+    // ---- Preferências de leitura: tamanho da fonte e alto contraste ----
+    // Ficam salvas no navegador. Este arquivo roda no <head>, então a preferência é aplicada
+    // antes da página ser desenhada (sem "piscar" no tema padrão).
+
+    const CHAVE_PREFERENCIAS = 'flowmigao-preferencias';
+    const FONTE_MAXIMA = 3;
+    const NOMES_FONTE = ['padrão', 'grande', 'maior', 'máxima'];
+
+    function lerPreferencias() {
+        try {
+            return JSON.parse(localStorage.getItem(CHAVE_PREFERENCIAS)) || {};
+        } catch (erro) {
+            return {};
+        }
+    }
+
+    function salvarPreferencias(preferencias) {
+        try {
+            localStorage.setItem(CHAVE_PREFERENCIAS, JSON.stringify(preferencias));
+        } catch (erro) {
+            // Navegação privada ou armazenamento bloqueado: vale só para esta página
+        }
+    }
+
+    const preferencias = lerPreferencias();
+
+    // Sem escolha salva, segue o sistema operacional ("aumentar contraste")
+    if (preferencias.contraste === undefined) {
+        preferencias.contraste = !!(window.matchMedia && window.matchMedia('(prefers-contrast: more)').matches);
+    }
+    preferencias.fonte = Math.min(Math.max(parseInt(preferencias.fonte, 10) || 0, 0), FONTE_MAXIMA);
+
+    function aplicarPreferencias() {
+        const raiz = document.documentElement;
+        raiz.classList.toggle('alto-contraste', preferencias.contraste);
+        if (preferencias.fonte) {
+            raiz.dataset.fonte = preferencias.fonte;
+        } else {
+            delete raiz.dataset.fonte;
+        }
+
+        const botaoContraste = document.getElementById('alto-contraste');
+        if (botaoContraste) {
+            botaoContraste.setAttribute('aria-pressed', String(preferencias.contraste));
+        }
+    }
+
+    function mudarFonte(nivel) {
+        const novo = Math.min(Math.max(nivel, 0), FONTE_MAXIMA);
+        if (novo === preferencias.fonte) {
+            anunciar(novo === FONTE_MAXIMA ? 'A fonte já está no tamanho máximo.' : 'A fonte já está no tamanho padrão.');
+            return;
+        }
+        preferencias.fonte = novo;
+        salvarPreferencias(preferencias);
+        aplicarPreferencias();
+        anunciar(`Tamanho da fonte: ${NOMES_FONTE[novo]}.`);
+    }
+
+    aplicarPreferencias();
+
     document.addEventListener('DOMContentLoaded', function () {
+        aplicarPreferencias();
+
+        const botoes = {
+            'fonte-diminuir': function () { mudarFonte(preferencias.fonte - 1); },
+            'fonte-padrao': function () { mudarFonte(0); },
+            'fonte-aumentar': function () { mudarFonte(preferencias.fonte + 1); },
+            'alto-contraste': function () {
+                preferencias.contraste = !preferencias.contraste;
+                salvarPreferencias(preferencias);
+                aplicarPreferencias();
+                anunciar(preferencias.contraste ? 'Alto contraste ativado.' : 'Alto contraste desativado.');
+            },
+        };
+        Object.keys(botoes).forEach(function (id) {
+            const botao = document.getElementById(id);
+            if (botao) {
+                botao.addEventListener('click', botoes[id]);
+            }
+        });
+
+        // Se o formulário voltou com erros, leva o foco ao resumo para que ele seja lido primeiro
         const resumoErros = document.getElementById('resumo-erros');
         if (resumoErros) {
             resumoErros.focus();
