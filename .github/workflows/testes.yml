@@ -1,11 +1,19 @@
 name: Testes
 
+# Roda automaticamente só em pull requests: quando o PR é aberto, a cada novo commit
+# enviado ao branch do PR e quando um PR fechado é reaberto. Sem PR aberto, não roda sozinho.
+# Também pode ser disparado manualmente na aba Actions (botão "Run workflow").
 on:
-  push:
-    branches: [main, dev]
   pull_request:
-    branches: [main, dev]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
+
+# Se chegar um commit novo enquanto os testes do anterior ainda rodam,
+# cancela a execução antiga e testa só a versão mais recente do PR.
+# Execuções manuais são agrupadas pelo branch escolhido.
+concurrency:
+  group: testes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   testes:

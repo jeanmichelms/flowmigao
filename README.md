@@ -1,6 +1,6 @@
 # flowmigao
 
-[![Testes](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml/badge.svg?branch=dev)](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml)
+[![Testes](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml/badge.svg)](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml)
 
 Controle de Manutenções Automotivas e Histórico de Revisões
 
@@ -60,7 +60,10 @@ coverage report
 
 ### Integração contínua (GitHub Actions)
 
-O workflow [`.github/workflows/testes.yml`](.github/workflows/testes.yml) roda a cada `push` e
-`pull request` nos branches `main` e `dev`, em dois bancos: **MySQL 8** e **SQLite**. Ele também
+O workflow [`.github/workflows/testes.yml`](.github/workflows/testes.yml) roda **somente em pull
+requests**: quando o PR é aberto, a cada novo commit enviado ao branch do PR e quando o PR é reaberto.
+Commits em branches sem PR aberto não disparam os testes, mas é possível rodá-los manualmente em
+**Actions → Testes → Run workflow**, escolhendo o branch. Se um commit novo chegar enquanto a execução
+anterior ainda roda, a antiga é cancelada. Os testes rodam em dois bancos: **MySQL 8** e **SQLite**. Ele também
 verifica a configuração do Django e se há migrações pendentes. O resumo da cobertura aparece na
 página da execução, e o relatório HTML completo fica disponível para download (artefato `cobertura-html`).
