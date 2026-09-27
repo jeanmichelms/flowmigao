@@ -1,53 +1,59 @@
 {% extends 'base.html' %}
 
+{% block title %}Painel Gerencial{% endblock %}
+
 {% block content %}
-<h2>Painel Gerencial</h2>
+<h1>Painel Gerencial</h1>
 
 <!-- Cartões de Resumo -->
-<div class="cards-resumo">
+<h2 class="visually-hidden">Resumo do mês</h2>
+<dl class="cards-resumo">
     <div class="card-resumo card-azul">
-        <span class="card-titulo">Novos Clientes (Mês)</span>
-        <strong class="card-valor">{{ clientes_mes }}</strong>
+        <dt class="card-titulo">Novos Clientes (Mês)</dt>
+        <dd class="card-valor">{{ clientes_mes }}</dd>
     </div>
     <div class="card-resumo card-verde">
-        <span class="card-titulo">Custo com Peças (Mês)</span>
-        <strong class="card-valor">R$ {{ gasto_pecas_mes|floatformat:2 }}</strong>
+        <dt class="card-titulo">Custo com Peças (Mês)</dt>
+        <dd class="card-valor">R$ {{ gasto_pecas_mes|floatformat:2 }}</dd>
     </div>
-</div>
+</dl>
 
 <!-- Histórico Mensal -->
-<h3>Histórico de Manutenções</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Mês/Ano</th>
-            <th>Total de Serviços</th>
-            <th>Preventivas</th>
-            <th>Corretivas</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for linha in historico_servicos %}
-        <tr>
-            <td>{{ linha.mes|date:"F / Y" }}</td>
-            <td><strong>{{ linha.total_servicos }}</strong></td>
-            <td>{{ linha.preventivas }}</td>
-            <td>{{ linha.corretivas }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="4">Nenhum serviço registrado ainda.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<h2 id="titulo-historico">Histórico de Manutenções</h2>
+<div class="table-responsive" role="region" aria-labelledby="titulo-historico" tabindex="0">
+    <table>
+        <caption class="visually-hidden">Quantidade de manutenções por mês, separadas em preventivas e corretivas</caption>
+        <thead>
+            <tr>
+                <th scope="col">Mês/Ano</th>
+                <th scope="col">Total de Serviços</th>
+                <th scope="col">Preventivas</th>
+                <th scope="col">Corretivas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in historico_servicos %}
+            <tr>
+                <th scope="row">{{ linha.mes|date:"F / Y" }}</th>
+                <td><strong>{{ linha.total_servicos }}</strong></td>
+                <td>{{ linha.preventivas }}</td>
+                <td>{{ linha.corretivas }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4">Nenhum serviço registrado ainda.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 
 <style>
     .cards-resumo {
         display: flex;
         flex-wrap: wrap;
         gap: 16px;
-        margin-bottom: 30px;
+        margin: 0 0 30px;
     }
     .card-resumo {
         flex: 1 1 220px;
@@ -58,8 +64,9 @@
     .card-azul {
         background: #2563eb;
     }
+    /* Verde mais escuro para garantir contraste mínimo de 4,5:1 com o texto branco */
     .card-verde {
-        background: #16a34a;
+        background: #15803d;
     }
     .card-titulo {
         display: block;
@@ -68,6 +75,11 @@
     }
     .card-valor {
         font-size: 2rem;
+        font-weight: bold;
+        margin: 0;
+    }
+    tbody th {
+        font-weight: normal;
     }
 </style>
 {% endblock %}

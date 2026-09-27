@@ -1,12 +1,17 @@
 {% extends 'base.html' %}
 {% load static %} <!-- carregar a pasta static com as APIs fipe e cep-->
 
+{% block title %}{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}{% endblock %}
 
 {% block content %}
-<h2>{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}</h2>
+<h1>{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}</h1>
+{% include 'includes/resumo_erros.html' with form=form %}
+<p class="aviso-obrigatorio">Campos marcados com <span class="obrigatorio">*</span> são obrigatórios.</p>
 <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% for campo in form %}
+        {% include 'includes/campo.html' with campo=campo %}
+    {% endfor %}
     <button class="btn" type="submit">Salvar</button>
     <a class="btn btn-secondary" href="{% url 'clientes_lista' %}">Cancelar</a>
 </form>

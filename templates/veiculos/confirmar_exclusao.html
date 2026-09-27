@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
 
+{% block title %}Excluir Veículo{% endblock %}
+
 {% block content %}
-<h2>Excluir Veículo</h2>
+<h1>Excluir Veículo</h1>
 <p>Tem certeza que deseja excluir <strong>{{ object.marca }} {{ object.modelo }}</strong>?</p>
 <form method="post">
     {% csrf_token %}

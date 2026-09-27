@@ -1,0 +1,21 @@
+{% comment %}
+Resumo dos erros do formulário, exibido no topo e focado ao carregar a página (acessibilidade.js).
+Cada item leva ao campo com problema. Campos ocultos (cliente/veículo escolhidos pela lupa)
+apontam para o campo visível "<id>_busca".
+Uso: {% include 'includes/resumo_erros.html' with form=form %}
+{% endcomment %}
+{% if form.errors %}
+<div class="resumo-erros" id="resumo-erros" tabindex="-1" aria-labelledby="resumo-erros-titulo">
+    <h2 id="resumo-erros-titulo">Não foi possível salvar. Verifique:</h2>
+    <ul>
+        {% for erro in form.non_field_errors %}
+        <li>{{ erro }}</li>
+        {% endfor %}
+        {% for campo in form %}
+            {% for erro in campo.errors %}
+            <li><a href="#{{ campo.auto_id }}{% if campo.is_hidden %}_busca{% endif %}">{{ campo.label }}: {{ erro }}</a></li>
+            {% endfor %}
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}

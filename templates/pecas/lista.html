@@ -1,36 +1,42 @@
 {% extends 'base.html' %}
 
+{% block title %}Peças{% endblock %}
+
 {% block content %}
-<h2>Peças</h2>
-<a class="btn" href="{% url 'pecas_nova' %}">Nova Peça</a>
-<br><br>
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Nome</th>
-            <th>Marca</th>
-            <th>Preço de Custo</th>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for peca in pecas %}
-        <tr>
-            <td>{{ peca.id }}</td>
-            <td>{{ peca.nome }}</td>
-            <td>{{ peca.marca|default:'-' }}</td>
-            <td>R$ {{ peca.preco_custo }}</td>
-            <td>
-                <a class="btn btn-secondary" href="{% url 'pecas_editar' peca.id %}">Editar</a>
-                <a class="btn btn-danger" href="{% url 'pecas_excluir' peca.id %}">Excluir</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="5">Nenhuma peça cadastrada.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<h1>Peças</h1>
+<div class="acoes-topo">
+    <a class="btn" href="{% url 'pecas_nova' %}">Nova Peça</a>
+</div>
+<div class="table-responsive" role="region" aria-labelledby="tabela-pecas" tabindex="0">
+    <table>
+        <caption id="tabela-pecas" class="visually-hidden">Lista de peças cadastradas</caption>
+        <thead>
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Nome</th>
+                <th scope="col">Marca</th>
+                <th scope="col">Preço de Custo</th>
+                <th scope="col">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for peca in pecas %}
+            <tr>
+                <td>{{ peca.id }}</td>
+                <td>{{ peca.nome }}</td>
+                <td>{{ peca.marca|default:'-' }}</td>
+                <td>R$ {{ peca.preco_custo }}</td>
+                <td>
+                    <a class="btn btn-secondary" href="{% url 'pecas_editar' peca.id %}">Editar<span class="visually-hidden"> peça {{ peca.nome }}</span></a>
+                    <a class="btn btn-danger" href="{% url 'pecas_excluir' peca.id %}">Excluir<span class="visually-hidden"> peça {{ peca.nome }}</span></a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Nenhuma peça cadastrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

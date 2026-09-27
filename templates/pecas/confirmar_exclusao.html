@@ -1,9 +1,11 @@
 {% extends 'base.html' %}
 
+{% block title %}Excluir Peça{% endblock %}
+
 {% block content %}
-<h2>Excluir Peça</h2>
+<h1>Excluir Peça</h1>
 {% if erro_protegida %}
-<p style="color: #b91c1c;">
+<p class="mensagem-erro" role="alert">
     A peça <strong>{{ object }}</strong> não pode ser excluída porque já foi usada em manutenções.
 </p>
 <a class="btn btn-secondary" href="{% url 'pecas_lista' %}">Voltar</a>
