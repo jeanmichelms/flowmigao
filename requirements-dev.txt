@@ -1,0 +1,3 @@
+# Dependências para desenvolvimento e testes (inclui as de produção)
+-r requirements.txt
+coverage==7.10.7

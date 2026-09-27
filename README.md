@@ -1,4 +1,7 @@
 # flowmigao
+
+[![Testes](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml/badge.svg)](https://github.com/jeanmichelms/flowmigao/actions/workflows/testes.yml)
+
 Controle de Manutenções Automotivas e Histórico de Revisões
 
 ## Como rodar (MySQL)
@@ -29,3 +32,38 @@ Pré-requisitos: Python 3.12+ e MySQL 8.
    ```
 
 Acesse http://localhost:8000 (dashboard em `/manutencoes/dashboard/`, admin em `/admin/`).
+
+## Testes
+
+Os testes automatizados usam o framework de testes do Django e cobrem:
+
+| App | O que é testado |
+|---|---|
+| `clientes` | validação do formulário (CPF/e-mail únicos, e-mail inválido), cadastro, edição, detalhe e exclusão |
+| `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
+| `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, busca de veículos e aviso de revisão por e-mail |
+| `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
+
+Para rodar localmente:
+
+```bash
+pip install -r requirements-dev.txt
+python manage.py test
+```
+
+Com relatório de cobertura (mostra as linhas não testadas):
+
+```bash
+coverage run manage.py test
+coverage report
+```
+
+### Integração contínua (GitHub Actions)
+
+O workflow [`.github/workflows/testes.yml`](.github/workflows/testes.yml) roda **somente em pull
+requests**: quando o PR é aberto, a cada novo commit enviado ao branch do PR e quando o PR é reaberto.
+Commits em branches sem PR aberto não disparam os testes, mas é possível rodá-los manualmente em
+**Actions → Testes → Run workflow**, escolhendo o branch. Se um commit novo chegar enquanto a execução
+anterior ainda roda, a antiga é cancelada. Os testes rodam em dois bancos: **MySQL 8** e **SQLite**. Ele também
+verifica a configuração do Django e se há migrações pendentes. O resumo da cobertura aparece na
+página da execução, e o relatório HTML completo fica disponível para download (artefato `cobertura-html`).

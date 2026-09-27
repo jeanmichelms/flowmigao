@@ -1,0 +1,98 @@
+name: Testes
+
+# Roda automaticamente só em pull requests: quando o PR é aberto, a cada novo commit
+# enviado ao branch do PR e quando um PR fechado é reaberto. Sem PR aberto, não roda sozinho.
+# Também pode ser disparado manualmente na aba Actions (botão "Run workflow").
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+# Se chegar um commit novo enquanto os testes do anterior ainda rodam,
+# cancela a execução antiga e testa só a versão mais recente do PR.
+# Execuções manuais são agrupadas pelo branch escolhido.
+concurrency:
+  group: testes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes (${{ matrix.banco }})
+    # Versão fixa: o ubuntu-latest vai migrar para o Ubuntu 26 e poderia mudar o ambiente sem aviso
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        banco: [mysql, sqlite]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: flowmigao
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      DB_ENGINE: ${{ matrix.banco }}
+      DB_NAME: flowmigao
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      AVISO_REVISAO_EMAIL_SERVICO_ATIVO: 'False'
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Instalar Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Instalar bibliotecas do MySQL (para o mysqlclient)
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libmysqlclient-dev
+
+      - name: Instalar dependências
+        run: pip install -r requirements-dev.txt
+
+      - name: Verificar configuração do Django
+        run: python manage.py check
+
+      - name: Verificar se há migrações pendentes
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Rodar os testes com cobertura
+        run: coverage run manage.py test --noinput --verbosity 2
+
+      - name: Relatório de cobertura
+        if: always()
+        run: |
+          coverage report
+          {
+            echo "## Cobertura de testes (${{ matrix.banco }})"
+            echo '```'
+            coverage report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar relatório HTML de cobertura
+        if: matrix.banco == 'mysql'
+        run: coverage html
+
+      - name: Publicar relatório HTML
+        if: matrix.banco == 'mysql'
+        uses: actions/upload-artifact@v7
+        with:
+          name: cobertura-html
+          path: htmlcov/
