@@ -18,7 +18,8 @@ concurrency:
 jobs:
   testes:
     name: Testes (${{ matrix.banco }})
-    runs-on: ubuntu-latest
+    # Versão fixa: o ubuntu-latest vai migrar para o Ubuntu 26 e poderia mudar o ambiente sem aviso
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -50,10 +51,10 @@ jobs:
 
     steps:
       - name: Baixar o código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Instalar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
           cache: pip
@@ -91,7 +92,7 @@ jobs:
 
       - name: Publicar relatório HTML
         if: matrix.banco == 'mysql'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-html
           path: htmlcov/
