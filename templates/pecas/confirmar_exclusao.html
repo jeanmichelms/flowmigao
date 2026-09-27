@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Excluir Peça</h2>
+{% if erro_protegida %}
+<p style="color: #b91c1c;">
+    A peça <strong>{{ object }}</strong> não pode ser excluída porque já foi usada em manutenções.
+</p>
+<a class="btn btn-secondary" href="{% url 'pecas_lista' %}">Voltar</a>
+{% else %}
+<p>Tem certeza que deseja excluir <strong>{{ object }}</strong>?</p>
+<form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Confirmar Exclusão</button>
+    <a class="btn btn-secondary" href="{% url 'pecas_lista' %}">Cancelar</a>
+</form>
+{% endif %}
+{% endblock %}

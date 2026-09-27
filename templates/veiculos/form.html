@@ -1,0 +1,282 @@
+{% extends 'base.html' %}
+{% load static %} <!-- Carrega os arquivos estáticos -->
+
+{% block content %}
+<h2>{% if object %}Editar Veículo{% else %}Novo Veículo{% endif %}</h2>
+<form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="error-list">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-group">
+        <label for="id_cliente_busca">Cliente</label>
+        {{ form.cliente }}
+        <div class="cliente-selector">
+            <input
+                type="text"
+                id="id_cliente_busca"
+                value="{% if form.instance.pk and form.instance.cliente %}{{ form.instance.cliente.nome }} ({{ form.instance.cliente.cpf }}){% elif selected_cliente %}{{ selected_cliente.nome }} ({{ selected_cliente.cpf }}){% elif form.initial.cliente %}{{ form.initial.cliente.nome }} ({{ form.initial.cliente.cpf }}){% endif %}"
+                placeholder="Selecione um cliente pela lupa"
+                readonly
+            >
+            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-cliente" aria-label="Buscar cliente">🔍</button>
+        </div>
+        {% if form.cliente.errors %}<div class="field-error">{{ form.cliente.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="id_marca">Marca</label>
+        {{ form.marca }}
+        {% if form.marca.errors %}<div class="field-error">{{ form.marca.errors|join:', ' }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="id_modelo">Modelo</label>
+        {{ form.modelo }}
+        {% if form.modelo.errors %}<div class="field-error">{{ form.modelo.errors|join:', ' }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="id_ano">Ano</label>
+        {{ form.ano }}
+        {% if form.ano.errors %}<div class="field-error">{{ form.ano.errors|join:', ' }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="id_placa">Placa</label>
+        {{ form.placa }}
+        {% if form.placa.errors %}<div class="field-error">{{ form.placa.errors|join:', ' }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="id_cor">Cor</label>
+        {{ form.cor }}
+        {% if form.cor.errors %}<div class="field-error">{{ form.cor.errors|join:', ' }}</div>{% endif %}
+    </div>
+    <div class="form-group">
+        <label for="id_chassi">Chassi</label>
+        {{ form.chassi }}
+        {% if form.chassi.errors %}<div class="field-error">{{ form.chassi.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-secondary" href="{{ cancel_url }}">Cancelar</a>
+</form>
+
+<div class="modal-overlay" id="modal-cliente" hidden aria-hidden="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Pesquisar cliente</h3>
+            <button type="button" class="btn btn-secondary btn-fechar" id="fechar-modal-cliente">Fechar</button>
+        </div>
+
+        <div class="form-group">
+            <label for="filtro-cliente">Buscar por ID, CPF, nome, email ou telefone</label>
+            <input type="text" id="filtro-cliente" placeholder="Digite para filtrar clientes">
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="resultado-clientes">
+                    <tr>
+                        <td colspan="6">Digite para pesquisar.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .cliente-selector {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .cliente-selector input[readonly] {
+        background: #f9fafb;
+    }
+    .btn-lupa {
+        width: auto;
+        min-width: 48px;
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+    }
+    .modal-overlay.is-open {
+        display: flex;
+    }
+    .modal-content {
+        width: min(1000px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .btn-fechar {
+        width: auto;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .field-error, .error-list {
+        color: #b91c1c;
+        margin-top: 6px;
+        font-size: 0.95rem;
+    }
+    .btn-selecionar {
+        width: auto;
+        padding: 8px 12px;
+    }
+</style>
+
+<script>
+    (function () {
+        const modal = document.getElementById('modal-cliente');
+        const abrirModalBtn = document.getElementById('abrir-modal-cliente');
+        const fecharModalBtn = document.getElementById('fechar-modal-cliente');
+        const filtroInput = document.getElementById('filtro-cliente');
+        const resultadoBody = document.getElementById('resultado-clientes');
+        const clienteHiddenInput = document.getElementById('id_cliente');
+        const clienteBuscaInput = document.getElementById('id_cliente_busca');
+        const buscarUrl = "{% url 'veiculos_buscar_clientes' %}";
+        let debounceTimer = null;
+
+        function escapeHtml(valor) {
+            return String(valor ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function abrirModal() {
+            modal.hidden = false;
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+            filtroInput.focus();
+            buscarClientes(filtroInput.value);
+        }
+
+        function fecharModal() {
+            modal.classList.remove('is-open');
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        function renderResultados(clientes) {
+            if (!clientes.length) {
+                resultadoBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado.</td></tr>';
+                return;
+            }
+
+            resultadoBody.innerHTML = clientes.map(function (cliente) {
+                const resumo = `${cliente.nome} (${cliente.cpf})`;
+                return `
+                    <tr>
+                        <td>${escapeHtml(cliente.id)}</td>
+                        <td>${escapeHtml(cliente.nome)}</td>
+                        <td>${escapeHtml(cliente.cpf)}</td>
+                        <td>${escapeHtml(cliente.email)}</td>
+                        <td>${escapeHtml(cliente.telefone)}</td>
+                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(cliente.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar</button></td>
+                    </tr>
+                `;
+            }).join('');
+
+            resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
+                botao.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    clienteHiddenInput.value = this.dataset.id;
+                    clienteBuscaInput.value = this.dataset.resumo;
+                    fecharModal();
+                });
+            });
+        }
+
+        function buscarClientes(termo) {
+            const url = `${buscarUrl}?q=${encodeURIComponent(termo || '')}`;
+            resultadoBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    renderResultados(data.results || []);
+                })
+                .catch(function () {
+                    resultadoBody.innerHTML = '<tr><td colspan="6">Erro ao buscar clientes.</td></tr>';
+                });
+        }
+
+        abrirModalBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            abrirModal();
+        });
+        fecharModalBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            fecharModal();
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                fecharModal();
+            }
+        });
+
+        filtroInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            const valor = this.value;
+            debounceTimer = setTimeout(function () {
+                buscarClientes(valor);
+            }, 250);
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) {
+                fecharModal();
+            }
+        });
+    })();
+</script>
+
+<!-- Chama o script da FIPE -->
+<script src="{% static 'js/fipe.js' %}"></script> 
+{% endblock %}

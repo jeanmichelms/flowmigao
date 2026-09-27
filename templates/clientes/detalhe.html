@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Detalhes do Cliente</h2>
+<p><strong>ID:</strong> {{ cliente.id|default:'-' }}</p>
+<p><strong>Nome:</strong> {{ cliente.nome|default:'-' }}</p>
+<p><strong>CPF:</strong> {{ cliente.cpf|default:'-' }}</p>
+<p><strong>Email:</strong> {{ cliente.email|default:'-' }}</p>
+<p><strong>Telefone:</strong> {{ cliente.telefone|default:'-' }}</p>
+<p><strong>Endereço:</strong> {{ cliente.endereco|default:'-' }}</p>
+<p><strong>Data de Cadastro:</strong> {{ cliente.data_cadastro|date:'d/m/Y H:i'|default:'-' }}</p>
+<hr>
+<h3>Veículos do Cliente</h3>
+<a class="btn" href="{% url 'veiculos_novo' %}?cliente={{ cliente.id }}&origem=cliente_detalhe">Novo Veículo</a>
+<br><br>
+{% for veiculo in cliente.veiculos.all %}
+<p>
+    <strong>{{ veiculo.marca|default:'-' }} {{ veiculo.modelo|default:'-' }}</strong> - Placa: {{ veiculo.placa|default:'-' }}<br>
+    <small>
+        Ano: {{ veiculo.ano|default_if_none:'-' }} |
+        Cor: {{ veiculo.cor|default:'-' }} |
+        Chassi: {{ veiculo.chassi|default:'-' }}
+    </small>
+</p>
+{% empty %}
+<p>Nenhum veículo cadastrado para este cliente.</p>
+{% endfor %}
+<a class="btn" href="{% url 'clientes_editar' cliente.id %}">Editar</a>
+<a class="btn btn-secondary" href="{% url 'clientes_lista' %}">Voltar</a>
+{% endblock %}

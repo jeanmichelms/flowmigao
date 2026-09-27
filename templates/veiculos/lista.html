@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Veículos</h2>
+<a class="btn" href="{% url 'veiculos_novo' %}">Novo Veículo</a>
+<br><br>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Ano</th>
+            <th>Placa</th>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for veiculo in veiculos %}
+        <tr>
+            <td>{{ veiculo.id }}</td>
+            <td>{{ veiculo.cliente.nome }}</td>
+            <td>{{ veiculo.marca }}</td>
+            <td>{{ veiculo.modelo }}</td>
+            <td>{{ veiculo.ano }}</td>
+            <td>{{ veiculo.placa }}</td>
+            <td>
+                <a class="btn" href="{% url 'veiculos_detalhe' veiculo.id %}">Ver</a>
+                <a class="btn btn-secondary" href="{% url 'veiculos_editar' veiculo.id %}">Editar</a>
+                <a class="btn btn-danger" href="{% url 'veiculos_excluir' veiculo.id %}">Excluir</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7">Nenhum veículo cadastrado.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

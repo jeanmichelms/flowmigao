@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% load static %} <!-- carregar a pasta static com as APIs fipe e cep-->
+
+
+{% block content %}
+<h2>{% if object %}Editar Cliente{% else %}Novo Cliente{% endif %}</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-secondary" href="{% url 'clientes_lista' %}">Cancelar</a>
+</form>
+
+<script src="{% static 'js/viacep.js' %}"></script><!-- cep -->
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Excluir Manutenção</h2>
+<p>Tem certeza que deseja excluir a manutenção <strong>{{ object.descricao }}</strong>?</p>
+<form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Sim, excluir</button>
+    <a class="btn btn-secondary" href="{% url 'manutencoes_lista' %}">Cancelar</a>
+</form>
+{% endblock %}

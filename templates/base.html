@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowMigao</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f6f8;
+        }
+        header {
+            background: #1f2937;
+            color: white;
+            padding: 16px;
+        }
+        nav a {
+            color: white;
+            margin-right: 16px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .container {
+            width: 90%;
+            max-width: 1100px;
+            margin: 30px auto;
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 14px;
+            background: #2563eb;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-danger {
+            background: #dc2626;
+        }
+        .btn-secondary {
+            background: #6b7280;
+        }
+        form p {
+            margin-bottom: 12px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>FlowMigao</h1>
+        <nav>
+            <a href="/">Início</a>
+            <a href="/clientes/">Clientes</a>
+            <a href="/veiculos/">Veículos</a>
+            <a href="{% url 'pecas_lista' %}">Peças</a>
+            <a href="/manutencoes/">Manutenções</a>
+            <a href="{% url 'dashboard' %}">Dashboard</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

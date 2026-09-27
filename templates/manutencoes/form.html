@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{% if object %}Editar{% else %}Nova{% endif %} Manutenção</h2>
+<form method="post">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="error-list">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="form-group">
+        <label for="id_veiculo_busca">Veículo</label>
+        {{ form.veiculo }}
+        <div class="veiculo-selector">
+            <input
+                type="text"
+                id="id_veiculo_busca"
+                value="{% if form.instance.pk and form.instance.veiculo %}{{ form.instance.veiculo.cliente.nome }} ({{ form.instance.veiculo.cliente.cpf }}) - {{ form.instance.veiculo.marca }} - {{ form.instance.veiculo.modelo }} ({{ form.instance.veiculo.ano }}) - {{ form.instance.veiculo.placa }}{% elif selected_veiculo %}{{ selected_veiculo.cliente.nome }} ({{ selected_veiculo.cliente.cpf }}) - {{ selected_veiculo.marca }} - {{ selected_veiculo.modelo }} ({{ selected_veiculo.ano }}) - {{ selected_veiculo.placa }}{% elif form.initial.veiculo %}{{ form.initial.veiculo.cliente.nome }} ({{ form.initial.veiculo.cliente.cpf }}) - {{ form.initial.veiculo.marca }} - {{ form.initial.veiculo.modelo }} ({{ form.initial.veiculo.ano }}) - {{ form.initial.veiculo.placa }}{% endif %}"
+                placeholder="Selecione um veículo pela lupa"
+                readonly
+            >
+            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-veiculo" aria-label="Buscar veículo">🔍</button>
+        </div>
+        {% if form.veiculo.errors %}<div class="field-error">{{ form.veiculo.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
+        {{ form.tipo }}
+        {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.data_manutencao.id_for_label }}">{{ form.data_manutencao.label }}</label>
+        {{ form.data_manutencao }}
+        {% if form.data_manutencao.errors %}<div class="field-error">{{ form.data_manutencao.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.data_proxima_manutencao.id_for_label }}">{{ form.data_proxima_manutencao.label }}</label>
+        {{ form.data_proxima_manutencao }}
+        {% if form.data_proxima_manutencao.errors %}<div class="field-error">{{ form.data_proxima_manutencao.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.quilometragem.id_for_label }}">{{ form.quilometragem.label }}</label>
+        {{ form.quilometragem }}
+        {% if form.quilometragem.errors %}<div class="field-error">{{ form.quilometragem.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
+        {{ form.valor }}
+        {% if form.valor.errors %}<div class="field-error">{{ form.valor.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
+        {{ form.descricao }}
+        {% if form.descricao.errors %}<div class="field-error">{{ form.descricao.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <div class="form-group">
+        <label for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
+        {{ form.observacoes }}
+        {% if form.observacoes.errors %}<div class="field-error">{{ form.observacoes.errors|join:', ' }}</div>{% endif %}
+    </div>
+
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-secondary" href="{{ cancel_url }}">Cancelar</a>
+</form>
+
+<div class="modal-overlay" id="modal-veiculo" hidden aria-hidden="true">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Pesquisar veículo</h3>
+            <button type="button" class="btn btn-secondary btn-fechar" id="fechar-modal-veiculo">Fechar</button>
+        </div>
+
+        <div class="form-group">
+            <label for="filtro-veiculo">Buscar por nome do cliente, CPF, marca, modelo, ano ou placa</label>
+            <input type="text" id="filtro-veiculo" placeholder="Digite para filtrar veículos">
+        </div>
+
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>CPF</th>
+                        <th>Marca</th>
+                        <th>Modelo</th>
+                        <th>Ano</th>
+                        <th>Placa</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="resultado-veiculos">
+                    <tr>
+                        <td colspan="7">Digite para pesquisar.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-group {
+        margin-bottom: 16px;
+    }
+    .veiculo-selector {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .veiculo-selector input[readonly] {
+        background: #f9fafb;
+    }
+    .btn-lupa {
+        width: auto;
+        min-width: 48px;
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 1000;
+    }
+    .modal-overlay.is-open {
+        display: flex;
+    }
+    .modal-content {
+        width: min(1100px, 100%);
+        max-height: 90vh;
+        overflow: auto;
+        background: white;
+        border-radius: 8px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+    .btn-fechar {
+        width: auto;
+    }
+    .table-responsive {
+        overflow-x: auto;
+    }
+    .field-error, .error-list {
+        color: #b91c1c;
+        margin-top: 6px;
+        font-size: 0.95rem;
+    }
+    .btn-selecionar {
+        width: auto;
+        padding: 8px 12px;
+    }
+</style>
+
+<script>
+    (function () {
+        const modal = document.getElementById('modal-veiculo');
+        const abrirModalBtn = document.getElementById('abrir-modal-veiculo');
+        const fecharModalBtn = document.getElementById('fechar-modal-veiculo');
+        const filtroInput = document.getElementById('filtro-veiculo');
+        const resultadoBody = document.getElementById('resultado-veiculos');
+        const veiculoHiddenInput = document.getElementById('id_veiculo');
+        const veiculoBuscaInput = document.getElementById('id_veiculo_busca');
+        const buscarUrl = "{% url 'manutencoes_buscar_veiculos' %}";
+        let debounceTimer = null;
+
+        function escapeHtml(valor) {
+            return String(valor ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function abrirModal() {
+            modal.hidden = false;
+            modal.setAttribute('aria-hidden', 'false');
+            modal.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+            filtroInput.focus();
+            buscarVeiculos(filtroInput.value);
+        }
+
+        function fecharModal() {
+            modal.classList.remove('is-open');
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        function renderResultados(veiculos) {
+            if (!veiculos.length) {
+                resultadoBody.innerHTML = '<tr><td colspan="7">Nenhum veículo encontrado.</td></tr>';
+                return;
+            }
+
+            resultadoBody.innerHTML = veiculos.map(function (veiculo) {
+                const resumo = `${veiculo.cliente_nome} (${veiculo.cliente_cpf}) - ${veiculo.marca} - ${veiculo.modelo} (${veiculo.ano}) - ${veiculo.placa}`;
+                return `
+                    <tr>
+                        <td>${escapeHtml(veiculo.cliente_nome)}</td>
+                        <td>${escapeHtml(veiculo.cliente_cpf)}</td>
+                        <td>${escapeHtml(veiculo.marca)}</td>
+                        <td>${escapeHtml(veiculo.modelo)}</td>
+                        <td>${escapeHtml(veiculo.ano)}</td>
+                        <td>${escapeHtml(veiculo.placa)}</td>
+                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(veiculo.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar</button></td>
+                    </tr>
+                `;
+            }).join('');
+
+            resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
+                botao.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    veiculoHiddenInput.value = this.dataset.id;
+                    veiculoBuscaInput.value = this.dataset.resumo;
+                    fecharModal();
+                });
+            });
+        }
+
+        function buscarVeiculos(termo) {
+            const url = `${buscarUrl}?q=${encodeURIComponent(termo || '')}`;
+            resultadoBody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+                .then(function (response) {
+                    return response.json();
+                })
+                .then(function (data) {
+                    renderResultados(data.results || []);
+                })
+                .catch(function () {
+                    resultadoBody.innerHTML = '<tr><td colspan="7">Erro ao buscar veículos.</td></tr>';
+                });
+        }
+
+        abrirModalBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            abrirModal();
+        });
+
+        fecharModalBtn.addEventListener('click', function (event) {
+            event.preventDefault();
+            fecharModal();
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                fecharModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) {
+                fecharModal();
+            }
+        });
+
+        filtroInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function () {
+                buscarVeiculos(filtroInput.value);
+            }, 250);
+        });
+    })();
+</script>
+{% endblock %}
