@@ -75,9 +75,8 @@ O projeto já vem configurado para o [Railway](https://railway.com) pelo arquivo
 | Etapa | O que acontece |
 |---|---|
 | Build | o Railpack instala o Python 3.12 (`.python-version`) e as dependências, e roda `collectstatic` (que não depende da `DJANGO_SECRET_KEY`: se ela ainda não existir, o build usa uma provisória) |
-| Antes de subir | `python manage.py migrate` cria/atualiza as tabelas no MySQL |
-| Execução | `gunicorn` serve o site; o WhiteNoise entrega CSS/JS compactados |
-| Healthcheck | o Railway só coloca a versão nova no ar se `/saude/` responder (o app e o banco) |
+| Início | `python manage.py migrate` cria/atualiza as tabelas no MySQL e, em seguida, o `gunicorn` sobe o site; o WhiteNoise entrega CSS/JS compactados |
+| Healthcheck | o Railway só coloca a versão nova no ar se `/saude/` responder: app no ar, banco conectado e nenhuma migração pendente |
 
 No Railway, `DEBUG` fica desligado automaticamente e o site passa a exigir HTTPS.
 

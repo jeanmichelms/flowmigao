@@ -16,6 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.db import DatabaseError, connection
+from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
 from django.urls import path, include
 from django.shortcuts import render
@@ -24,11 +25,16 @@ def home(request):
     return render(request, 'home.html')
 
 def saude(request):
-    # Usado pelo healthcheck do Railway: o deploy só entra no ar se o app responder e o banco conectar
+    # Usado pelo healthcheck do Railway: o deploy só entra no ar se o app responder,
+    # o banco conectar e todas as tabelas estiverem criadas (nenhuma migração pendente)
     try:
         connection.ensure_connection()
+        executor = MigrationExecutor(connection)
+        pendentes = executor.migration_plan(executor.loader.graph.leaf_nodes())
     except DatabaseError:
         return JsonResponse({'status': 'erro', 'banco': 'indisponível'}, status=503)
+    if pendentes:
+        return JsonResponse({'status': 'erro', 'migracoes_pendentes': len(pendentes)}, status=503)
     return JsonResponse({'status': 'ok'})
 
 urlpatterns = [
