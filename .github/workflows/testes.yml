@@ -60,9 +60,6 @@ jobs:
           cache: pip
           cache-dependency-path: requirements*.txt
 
-      - name: Instalar bibliotecas do MySQL (para o mysqlclient)
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libmysqlclient-dev
-
       - name: Instalar dependências
         run: pip install -r requirements-dev.txt
 

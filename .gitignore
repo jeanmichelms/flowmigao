@@ -210,3 +210,6 @@ marimo/_lsp/
 __marimo__/
 criar_banco_local.sql
 dados_sqlite.json
+
+# Arquivos estáticos gerados pelo collectstatic (deploy)
+staticfiles/

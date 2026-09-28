@@ -13,7 +13,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
+
+from .ambiente import banco_mysql_da_url, ler_bool, ler_lista
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,17 +24,34 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Carrega variáveis de ambiente do arquivo .env (credenciais do banco, e-mail etc.)
 load_dotenv(BASE_DIR / '.env')
 
+# O Railway define RAILWAY_ENVIRONMENT_ID em todos os deploys
+NO_RAILWAY = bool(os.getenv('RAILWAY_ENVIRONMENT_ID'))
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7y62ytnlvnuu1-3jl5zsmmz33qmlkm6g6at^r#bv&=td@@%643'
+# Checklist de produção: https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG fica ligado no computador local e desligado no Railway, a menos que DJANGO_DEBUG diga o contrário.
+DEBUG = ler_bool('DJANGO_DEBUG', padrao=not NO_RAILWAY)
 
-ALLOWED_HOSTS = ['*']
+# Em produção a chave secreta é obrigatória e vem só da variável de ambiente.
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured('Defina a variável DJANGO_SECRET_KEY para rodar com DEBUG desligado.')
+    SECRET_KEY = 'django-insecure-somente-para-desenvolvimento-local'
+
+# Endereços pelos quais o site pode ser acessado
+ALLOWED_HOSTS = ler_lista('DJANGO_ALLOWED_HOSTS') or ['localhost', '127.0.0.1', '[::1]']
+CSRF_TRUSTED_ORIGINS = ler_lista('DJANGO_CSRF_TRUSTED_ORIGINS')
+
+if NO_RAILWAY:
+    # Domínio público gerado pelo Railway (ex.: flowmigao-production.up.railway.app)
+    dominio_railway = os.getenv('RAILWAY_PUBLIC_DOMAIN')
+    if dominio_railway:
+        ALLOWED_HOSTS.append(dominio_railway)
+        CSRF_TRUSTED_ORIGINS.append(f'https://{dominio_railway}')
+    # O healthcheck do Railway chega com este host
+    ALLOWED_HOSTS.append('healthcheck.railway.app')
 
 
 # Application definition
@@ -84,7 +104,25 @@ WSGI_APPLICATION = 'flowmigao.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-if os.getenv('DB_ENGINE', 'mysql').lower() == 'sqlite':
+# Ordem de prioridade:
+#   1. DATABASE_URL (no Railway: DATABASE_URL=${{MySQL.MYSQL_URL}})
+#   2. DB_ENGINE=sqlite
+#   3. DB_NAME, DB_USER, DB_PASSWORD, DB_HOST e DB_PORT (MySQL local)
+
+if os.getenv('DATABASE_URL'):
+    conexao_mysql = banco_mysql_da_url(os.getenv('DATABASE_URL'))
+elif os.getenv('DB_ENGINE', 'mysql').lower() == 'sqlite':
+    conexao_mysql = None
+else:
+    conexao_mysql = {
+        'NAME': os.getenv('DB_NAME', 'flowmigao'),
+        'USER': os.getenv('DB_USER', 'flowmigao'),
+        'PASSWORD': os.getenv('DB_PASSWORD', ''),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '3306'),
+    }
+
+if conexao_mysql is None:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -95,11 +133,10 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'flowmigao'),
-            'USER': os.getenv('DB_USER', 'flowmigao'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
+            **conexao_mysql,
+            # Reaproveita a conexão por até 60s em produção e testa se ainda está viva antes de usar
+            'CONN_MAX_AGE': 0 if DEBUG else 60,
+            'CONN_HEALTH_CHECKS': True,
             'OPTIONS': {
                 'charset': 'utf8mb4',
                 'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -152,6 +189,35 @@ STATICFILES_DIRS = [
 ]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+if not DEBUG:
+    # WhiteNoise serve os arquivos compactados e com nome versionado (cache longo no navegador)
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
+
+
+# Segurança em produção (HTTPS). O Railway entrega o HTTPS e avisa o Django pelo cabeçalho X-Forwarded-Proto.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    # O healthcheck do Railway acessa por HTTP interno; não pode ser redirecionado
+    SECURE_REDIRECT_EXEMPT = [r'^saude/$']
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_HSTS_SECONDS', str(60 * 60 * 24 * 30)))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    # A lista de "HSTS preload" dos navegadores só aceita domínio próprio; *.up.railway.app é do Railway.
+    SILENCED_SYSTEM_CHECKS = ['security.W021']
+
+    # Registra erros e avisos no console, que aparece na aba "Logs" do Railway
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {'console': {'class': 'logging.StreamHandler'}},
+        'root': {'handlers': ['console'], 'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO')},
+    }
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
@@ -159,9 +225,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # E-mail
-EMAIL_BACKEND = os.getenv(
-    'EMAIL_BACKEND',
-    'django.core.mail.backends.smtp.EmailBackend',
+# Com BREVO_API_KEY definida, envia pela API HTTPS do Brevo (necessário no Railway, que bloqueia SMTP).
+# Sem ela, usa SMTP com as variáveis EMAIL_* abaixo.
+BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND') or (
+    'flowmigao.email_brevo.BrevoEmailBackend' if BREVO_API_KEY
+    else 'django.core.mail.backends.smtp.EmailBackend'
 )
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'localhost') # Substitua pelo host SMTP real do serviço de e-mail que você usará (ex: 'smtp.gmail.com' para Gmail)
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587')) # Substitua pela porta real do serviço de e-mail (ex: 587 para Gmail com TLS, 465 para SSL)
