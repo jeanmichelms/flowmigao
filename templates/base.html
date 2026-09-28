@@ -188,6 +188,40 @@
             background: #fef2f2;
             color: #7f1d1d;
         }
+        /* Auditoria */
+        .filtros {
+            margin-bottom: 20px;
+        }
+        .filtros-campos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0 16px;
+        }
+        .lista-alteracoes {
+            margin: 0;
+            padding-left: 18px;
+        }
+        .acao {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .acao-inclusao { background: #dcfce7; color: #14532d; }
+        .acao-alteracao { background: #dbeafe; color: #1e3a8a; }
+        .acao-exclusao { background: #fee2e2; color: #7f1d1d; }
+        .resumo-auditoria,
+        .aviso-filtro {
+            color: #4b5563;
+            font-size: 0.95rem;
+        }
+        .paginacao {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
         .detalhes {
             display: grid;
             grid-template-columns: max-content 1fr;
@@ -393,7 +427,14 @@
         html.alto-contraste textarea[aria-invalid="true"] {
             border: 3px dashed #ff8080 !important;
         }
+        html.alto-contraste .acao {
+            background: #000 !important;
+            color: #fff !important;
+            border: 1px solid #fff !important;
+        }
         html.alto-contraste .ajuda,
+        html.alto-contraste .resumo-auditoria,
+        html.alto-contraste .aviso-filtro,
         html.alto-contraste .aviso-obrigatorio {
             color: #fff !important;
         }
@@ -458,6 +499,7 @@
                 <li><a href="{% url 'dashboard' %}"{% if rota == 'dashboard' %} aria-current="page"{% endif %}>Painel Gerencial</a></li>
                 {% if user.is_superuser %}
                 <li><a href="{% url 'usuarios_lista' %}"{% if 'usuarios_' in rota %} aria-current="page"{% endif %}>Usuários</a></li>
+                <li><a href="{% url 'auditoria_lista' %}"{% if 'auditoria_' in rota %} aria-current="page"{% endif %}>Auditoria</a></li>
                 {% endif %}
             </ul>
             {% endwith %}

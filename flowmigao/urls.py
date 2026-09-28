@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.contrib.auth.decorators import login_not_required
-from django.db import DatabaseError, connection
+from django.db import DatabaseError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
 from django.urls import path, include
@@ -26,6 +26,7 @@ def home(request):
     return render(request, 'home.html')
 
 @login_not_required
+@transaction.non_atomic_requests  # abrir a transação já falharia com o banco fora, antes do tratamento abaixo
 def saude(request):
     # Usado pelo healthcheck do Railway: o deploy só entra no ar se o app responder,
     # o banco conectar e todas as tabelas estiverem criadas (nenhuma migração pendente)
@@ -47,4 +48,5 @@ urlpatterns = [
     path('veiculos/', include('veiculos.urls')),
     path('manutencoes/', include('manutencoes.urls')),
     path('', include('usuarios.urls')),
+    path('auditoria/', include('auditoria.urls')),
 ]

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditoria{% endblock %}
+
+{% block content %}
+<h1>Auditoria</h1>
+<p>Quem incluiu, alterou ou excluiu cada registro. Alterações feitas automaticamente (como o aviso de revisão por e-mail) aparecem como <strong>Sistema</strong>.</p>
+
+{% if filtro.cleaned_data.objeto %}
+<p class="aviso-filtro">Mostrando o histórico de um único registro. <a href="{% url 'auditoria_lista' %}">Ver todos os registros</a></p>
+{% endif %}
+
+<form method="get" class="filtros" aria-labelledby="titulo-filtros">
+    <h2 id="titulo-filtros" class="visually-hidden">Filtros</h2>
+    {% include 'includes/resumo_erros.html' with form=filtro %}
+    <div class="filtros-campos">
+        {% for campo in filtro.visible_fields %}
+            {% include 'includes/campo.html' with campo=campo %}
+        {% endfor %}
+    </div>
+    {% for campo in filtro.hidden_fields %}{{ campo }}{% endfor %}
+    <button class="btn" type="submit">Filtrar</button>
+    {% if filtrando %}<a class="btn btn-secondary" href="{% url 'auditoria_lista' %}">Limpar filtros</a>{% endif %}
+</form>
+
+<p role="status">{{ paginator.count }} registro{{ paginator.count|pluralize }} encontrado{{ paginator.count|pluralize }}.</p>
+
+<div class="table-responsive" role="region" aria-labelledby="tabela-auditoria" tabindex="0">
+    <table>
+        <caption id="tabela-auditoria" class="visually-hidden">Histórico de inclusões, alterações e exclusões</caption>
+        <thead>
+            <tr>
+                <th scope="col">Data e hora</th>
+                <th scope="col">Usuário</th>
+                <th scope="col">Ação</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Registro</th>
+                <th scope="col">Detalhes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.data_hora|date:'d/m/Y H:i:s' }}</td>
+                <td>{{ registro.autor }}</td>
+                <td><span class="acao acao-{{ registro.acao|lower }}">{{ registro.get_acao_display }}</span></td>
+                <td>{{ registro.tipo_nome|capfirst }}</td>
+                <td>{{ registro.objeto_descricao }}</td>
+                <td>
+                    {% if not registro.alteracoes %}
+                        -
+                    {% elif registro.acao == 'ALTERACAO' %}
+                        {% include 'auditoria/alteracoes.html' with registro=registro %}
+                    {% else %}
+                        <details>
+                            <summary>Ver dados<span class="visually-hidden"> de {{ registro.objeto_descricao }}</span></summary>
+                            {% include 'auditoria/alteracoes.html' with registro=registro %}
+                        </details>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">Nenhum registro encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<nav class="paginacao" aria-label="Páginas da auditoria">
+    {% if page_obj.has_previous %}<a class="btn btn-secondary" href="{% querystring page=page_obj.previous_page_number %}">Anterior</a>{% endif %}
+    <span>Página {{ page_obj.number }} de {{ paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-secondary" href="{% querystring page=page_obj.next_page_number %}">Próxima</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

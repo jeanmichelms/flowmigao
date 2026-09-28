@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load auditoria %}
 
 {% block title %}Veículo {{ veiculo.placa }}{% endblock %}
 
@@ -15,6 +16,7 @@
     <dt>Chassi</dt><dd>{{ veiculo.chassi|default:'-' }}</dd>
     <dt>Data de Cadastro</dt><dd>{{ veiculo.data_cadastro|date:'d/m/Y H:i'|default:'-' }}</dd>
 </dl>
+{% resumo_auditoria veiculo %}
 <hr>
 <h2>Manutenções do Veículo</h2>
 <div class="acoes-topo">

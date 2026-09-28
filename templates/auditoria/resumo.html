@@ -1,0 +1,6 @@
+<p class="resumo-auditoria">
+    {% if inclusao %}Cadastrado por <strong>{{ inclusao.autor }}</strong> em {{ inclusao.data_hora|date:'d/m/Y H:i' }}.{% endif %}
+    {% if alteracao %}Última alteração por <strong>{{ alteracao.autor }}</strong> em {{ alteracao.data_hora|date:'d/m/Y H:i' }}.{% endif %}
+    {% if not inclusao and not alteracao %}Sem histórico de alterações (cadastro anterior ao controle de auditoria).{% endif %}
+    {% if historico_url %}<a href="{{ historico_url }}">Ver histórico completo</a>{% endif %}
+</p>
