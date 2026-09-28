@@ -1,0 +1,15 @@
+{% comment %}Formulário de filtros das telas de auditoria. Uso: {% include 'auditoria/filtros.html' with limpar_url=... %}{% endcomment %}
+<form method="get" class="filtros" aria-labelledby="titulo-filtros">
+    <h2 id="titulo-filtros" class="visually-hidden">Filtros</h2>
+    {% include 'includes/resumo_erros.html' with form=filtro %}
+    <div class="filtros-campos">
+        {% for campo in filtro.visible_fields %}
+            {% include 'includes/campo.html' with campo=campo %}
+        {% endfor %}
+    </div>
+    {% for campo in filtro.hidden_fields %}{{ campo }}{% endfor %}
+    <button class="btn" type="submit">Filtrar</button>
+    {% if filtrando %}<a class="btn btn-secondary" href="{{ limpar_url }}">Limpar filtros</a>{% endif %}
+</form>
+
+<p role="status">{{ paginator.count }} registro{{ paginator.count|pluralize }} encontrado{{ paginator.count|pluralize }}.</p>

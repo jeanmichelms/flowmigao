@@ -222,6 +222,34 @@
             align-items: center;
             gap: 12px;
         }
+        /* Abas "Alterações de registros" / "Logins malsucedidos" */
+        .abas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 20px;
+            border-bottom: 2px solid #e5e7eb;
+            margin-bottom: 16px;
+        }
+        .abas a {
+            color: #1d4ed8;
+            font-weight: bold;
+            text-decoration: none;
+            padding: 8px 2px;
+            margin-bottom: -2px;
+            border-bottom: 3px solid transparent;
+        }
+        .abas a:hover {
+            text-decoration: underline;
+        }
+        .abas a[aria-current="page"] {
+            color: #111827;
+            border-bottom-color: #2563eb;
+        }
+        .navegador {
+            font-size: 0.85rem;
+            max-width: 360px;
+            overflow-wrap: anywhere;
+        }
         .detalhes {
             display: grid;
             grid-template-columns: max-content 1fr;
@@ -395,6 +423,12 @@
         html.alto-contraste .sessao-usuario a {
             color: #ff0 !important;
             text-decoration: underline !important;
+        }
+        html.alto-contraste .abas {
+            border-bottom-color: #fff !important;
+        }
+        html.alto-contraste .abas a[aria-current="page"] {
+            border-bottom-color: #ff0 !important;
         }
         html.alto-contraste .btn,
         html.alto-contraste .barra-acessibilidade button,

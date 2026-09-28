@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Logins malsucedidos{% endblock %}
+
+{% block content %}
+<h1>Auditoria</h1>
+{% include 'auditoria/abas.html' %}
+<p>Tentativas de entrar no sistema (inclusive pelo <code>/admin/</code>) que não deram certo. A senha digitada nunca é gravada.</p>
+
+{% url 'auditoria_logins' as limpar_url %}
+{% include 'auditoria/filtros.html' with limpar_url=limpar_url %}
+
+<div class="table-responsive" role="region" aria-labelledby="tabela-logins" tabindex="0">
+    <table>
+        <caption id="tabela-logins" class="visually-hidden">Tentativas de login malsucedidas</caption>
+        <thead>
+            <tr>
+                <th scope="col">Data e hora</th>
+                <th scope="col">Usuário informado</th>
+                <th scope="col">Motivo</th>
+                <th scope="col">IP</th>
+                <th scope="col">Navegador</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tentativa in tentativas %}
+            <tr>
+                <td>{{ tentativa.data_hora|date:'d/m/Y H:i:s' }}</td>
+                <td>{{ tentativa.usuario_informado }}</td>
+                <td><span class="acao acao-{% if tentativa.motivo == 'INEXISTENTE' %}exclusao{% else %}alteracao{% endif %}">{{ tentativa.get_motivo_display }}</span></td>
+                <td>{{ tentativa.ip|default:'-' }}</td>
+                <td class="navegador">{{ tentativa.navegador|default:'-' }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5">Nenhuma tentativa encontrada.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include 'auditoria/paginacao.html' %}
+{% endblock %}

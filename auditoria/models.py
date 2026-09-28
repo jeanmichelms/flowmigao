@@ -42,3 +42,30 @@ class RegistroAuditoria(models.Model):
     def tipo_nome(self):
         modelo = self.tipo.model_class()
         return modelo._meta.verbose_name if modelo else self.tipo.model
+
+
+class TentativaLogin(models.Model):
+    """Tentativa de login que não deu certo. A senha digitada nunca é gravada."""
+
+    class Motivo(models.TextChoices):
+        SENHA_INCORRETA = 'SENHA', 'Senha incorreta'
+        USUARIO_INEXISTENTE = 'INEXISTENTE', 'Usuário não cadastrado'
+        USUARIO_DESATIVADO = 'DESATIVADO', 'Usuário desativado'
+
+    data_hora = models.DateTimeField('Data e hora', auto_now_add=True, db_index=True)
+    usuario_informado = models.CharField('Usuário informado', max_length=150)
+    # Preenchido quando o usuário digitado existe (senha incorreta ou usuário desativado)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+    motivo = models.CharField('Motivo', max_length=12, choices=Motivo.choices)
+    ip = models.GenericIPAddressField('IP', null=True, blank=True)
+    navegador = models.CharField('Navegador', max_length=255, blank=True)
+
+    class Meta:
+        ordering = ['-data_hora', '-id']
+        verbose_name = 'Tentativa de login malsucedida'
+        verbose_name_plural = 'Tentativas de login malsucedidas'
+
+    def __str__(self):
+        return f'{self.usuario_informado} ({self.get_motivo_display()})'

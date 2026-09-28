@@ -58,11 +58,15 @@ também para o `/admin/`.
 - **Telas de detalhe** de cliente, veículo e manutenção mostram quem cadastrou e quem fez a última alteração;
   o administrador tem um link para o histórico completo daquele registro.
 - Alterações feitas fora de uma tela, como o aviso de revisão por e-mail marcando o envio, aparecem como **Sistema**.
-- Senhas nunca são gravadas: aparece só "Senha: (alterada)". Logins não geram registro.
+- Senhas nunca são gravadas: aparece só "Senha: (alterada)". Logins bem-sucedidos não geram registro.
 - Se um usuário for excluído, os registros dele continuam mostrando o nome.
 - Cada requisição roda numa transação única (`ATOMIC_REQUESTS`): se a auditoria falhar, a alteração também é
   desfeita, então nenhuma mudança feita pelas telas fica sem registro.
 - Registros cadastrados antes desta funcionalidade não têm histórico de inclusão.
+- **Logins malsucedidos** (aba na tela Auditoria): cada tentativa que falha, na tela de login do sistema ou do
+  `/admin/`, grava a data/hora, o usuário digitado, o motivo (senha incorreta, usuário não cadastrado ou
+  desativado), o IP e o navegador. A senha digitada nunca é gravada. No Railway, o IP vem do cabeçalho
+  `X-Forwarded-For` (o último endereço, que é o acrescentado pelo proxy).
 
 ## Testes
 
@@ -74,7 +78,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 | `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
 | `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, busca de veículos e aviso de revisão por e-mail |
 | `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
-| `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe |
+| `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe, transação por requisição, logins malsucedidos (motivo, IP, senha nunca gravada, tela e filtros) |
 | `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
 
 Para rodar localmente:

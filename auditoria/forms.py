@@ -3,7 +3,7 @@ import datetime
 from django import forms
 from django.utils import timezone
 
-from .models import RegistroAuditoria
+from .models import RegistroAuditoria, TentativaLogin
 from .sinais import modelos_monitorados
 
 SISTEMA = '__sistema__'
@@ -27,25 +27,9 @@ def inicio_do_dia(data):
     return timezone.make_aware(datetime.datetime.combine(data, datetime.time.min))
 
 
-class FiltroAuditoriaForm(forms.Form):
-    tipo = forms.ChoiceField(label='Tipo de registro', required=False)
-    acao = forms.ChoiceField(
-        label='Ação', required=False, choices=[('', 'Todas')] + RegistroAuditoria.Acao.choices
-    )
-    usuario = forms.ChoiceField(label='Usuário', required=False)
+class FiltroPeriodoForm(forms.Form):
     data_inicio = forms.DateField(label='De', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
     data_fim = forms.DateField(label='Até', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    busca = forms.CharField(
-        label='Registro contém', required=False, max_length=100,
-        help_text='Parte do nome, placa, CPF, descrição...',
-    )
-    # Usado pelo link "Ver histórico" das telas de detalhe (junto com o tipo)
-    objeto = forms.CharField(required=False, widget=forms.HiddenInput())
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['tipo'].choices = opcoes_de_tipo()
-        self.fields['usuario'].choices = opcoes_de_usuario()
 
     def clean(self):
         dados = super().clean()
@@ -53,6 +37,36 @@ class FiltroAuditoriaForm(forms.Form):
         if inicio and fim and inicio > fim:
             self.add_error('data_fim', 'A data final deve ser igual ou posterior à data inicial.')
         return dados
+
+    def filtrar_periodo(self, itens):
+        # Faixa de data/hora em vez de __date: no MySQL, __date depende das tabelas de fuso horário,
+        # que normalmente não estão carregadas, e o filtro não encontraria nada
+        if self.cleaned_data['data_inicio']:
+            itens = itens.filter(data_hora__gte=inicio_do_dia(self.cleaned_data['data_inicio']))
+        if self.cleaned_data['data_fim']:
+            itens = itens.filter(data_hora__lt=inicio_do_dia(self.cleaned_data['data_fim'] + datetime.timedelta(days=1)))
+        return itens
+
+
+class FiltroAuditoriaForm(FiltroPeriodoForm):
+    tipo = forms.ChoiceField(label='Tipo de registro', required=False)
+    acao = forms.ChoiceField(
+        label='Ação', required=False, choices=[('', 'Todas')] + RegistroAuditoria.Acao.choices
+    )
+    usuario = forms.ChoiceField(label='Usuário', required=False)
+    busca = forms.CharField(
+        label='Registro contém', required=False, max_length=100,
+        help_text='Parte do nome, placa, CPF, descrição...',
+    )
+    # Usado pelo link "Ver histórico" das telas de detalhe (junto com o tipo)
+    objeto = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    field_order = ['tipo', 'acao', 'usuario', 'data_inicio', 'data_fim', 'busca']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tipo'].choices = opcoes_de_tipo()
+        self.fields['usuario'].choices = opcoes_de_usuario()
 
     def filtrar(self, registros):
         dados = self.cleaned_data
@@ -67,12 +81,26 @@ class FiltroAuditoriaForm(forms.Form):
             registros = registros.filter(usuario_nome='')
         elif dados['usuario']:
             registros = registros.filter(usuario_nome=dados['usuario'])
-        # Faixa de data/hora em vez de __date: no MySQL, __date depende das tabelas de fuso horário,
-        # que normalmente não estão carregadas, e o filtro não encontraria nada
-        if dados['data_inicio']:
-            registros = registros.filter(data_hora__gte=inicio_do_dia(dados['data_inicio']))
-        if dados['data_fim']:
-            registros = registros.filter(data_hora__lt=inicio_do_dia(dados['data_fim'] + datetime.timedelta(days=1)))
         if dados['busca']:
             registros = registros.filter(objeto_descricao__icontains=dados['busca'])
-        return registros
+        return self.filtrar_periodo(registros)
+
+
+class FiltroLoginForm(FiltroPeriodoForm):
+    usuario = forms.CharField(label='Usuário informado contém', required=False, max_length=150)
+    motivo = forms.ChoiceField(
+        label='Motivo', required=False, choices=[('', 'Todos')] + TentativaLogin.Motivo.choices
+    )
+    ip = forms.GenericIPAddressField(label='IP', required=False)
+
+    field_order = ['usuario', 'motivo', 'ip', 'data_inicio', 'data_fim']
+
+    def filtrar(self, tentativas):
+        dados = self.cleaned_data
+        if dados['usuario']:
+            tentativas = tentativas.filter(usuario_informado__icontains=dados['usuario'])
+        if dados['motivo']:
+            tentativas = tentativas.filter(motivo=dados['motivo'])
+        if dados['ip']:
+            tentativas = tentativas.filter(ip=dados['ip'])
+        return self.filtrar_periodo(tentativas)
