@@ -1,8 +1,11 @@
+import json
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 from datetime import date
-from unittest import mock
+from unittest import mock, skipUnless
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -232,7 +235,6 @@ class ConfiguracaoProducaoTests(SimpleTestCase):
         )
         resultado = self.rodar(comando, **variaveis)
         self.assertEqual(resultado.returncode, 0, resultado.stderr)
-        import json
         return json.loads(resultado.stdout)
 
     def test_no_railway_desliga_debug_e_libera_o_dominio_publico(self):
@@ -259,6 +261,25 @@ class ConfiguracaoProducaoTests(SimpleTestCase):
         self.assertFalse(config['SSL'])
         self.assertEqual(config['HOSTS'], ['localhost', '127.0.0.1', '[::1]'])
         self.assertEqual(config['EMAIL'], 'django.core.mail.backends.smtp.EmailBackend')
+
+    @skipUnless(shutil.which('sh'), 'precisa do sh, como no build do Railway')
+    def test_build_do_railway_roda_sem_a_chave_secreta(self):
+        # O Railway executa o buildCommand com "sh -c"; o collectstatic não pode depender da DJANGO_SECRET_KEY
+        with open(settings.BASE_DIR / 'railway.json', encoding='utf-8') as arquivo:
+            comando = json.load(arquivo)['build']['buildCommand']
+        comando = comando.replace('python ', f'{shlex.quote(sys.executable)} ', 1)
+
+        ambiente = dict(os.environ, RAILWAY_ENVIRONMENT_ID='abc', DB_ENGINE='sqlite')
+        for chave in NEUTRAS:
+            if chave != 'RAILWAY_ENVIRONMENT_ID':
+                ambiente[chave] = ''
+        resultado = subprocess.run(
+            ['sh', '-c', comando], cwd=settings.BASE_DIR, env=ambiente,
+            capture_output=True, text=True, timeout=120,
+        )
+
+        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)
+        self.assertIn('static files', resultado.stdout)
 
     def test_producao_sem_chave_secreta_nao_sobe(self):
         resultado = self.rodar(
