@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Usuários{% endblock %}
+
+{% block content %}
+<h1>Usuários</h1>
+<div class="acoes-topo">
+    <a class="btn" href="{% url 'usuarios_novo' %}">Novo Usuário</a>
+</div>
+<div class="table-responsive" role="region" aria-labelledby="tabela-usuarios" tabindex="0">
+    <table>
+        <caption id="tabela-usuarios" class="visually-hidden">Lista de usuários do sistema</caption>
+        <thead>
+            <tr>
+                <th scope="col">Usuário</th>
+                <th scope="col">Nome</th>
+                <th scope="col">E-mail</th>
+                <th scope="col">Perfil</th>
+                <th scope="col">Situação</th>
+                <th scope="col">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario.username }}{% if usuario.pk == user.pk %} (você){% endif %}</td>
+                <td>{{ usuario.first_name|default:'-' }}</td>
+                <td>{{ usuario.email|default:'-' }}</td>
+                <td>{% if usuario.is_superuser %}Administrador{% else %}Comum{% endif %}</td>
+                <td>{% if usuario.is_active %}Ativo{% else %}Desativado{% endif %}</td>
+                <td>
+                    <a class="btn btn-secondary" href="{% url 'usuarios_editar' usuario.pk %}">Editar<span class="visually-hidden"> usuário {{ usuario.username }}</span></a>
+                    {% if usuario.pk != user.pk %}
+                    <a class="btn btn-danger" href="{% url 'usuarios_excluir' usuario.pk %}">Excluir<span class="visually-hidden"> usuário {{ usuario.username }}</span></a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

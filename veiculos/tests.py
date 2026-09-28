@@ -2,12 +2,14 @@ from django.test import TestCase
 from django.urls import reverse
 
 from clientes.models import Cliente
+from usuarios.apoio_testes import entrar
 
 from .models import Veiculo
 
 
 class VeiculoFormTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         self.cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
         self.veiculo = Veiculo.objects.create(
             cliente=self.cliente,
@@ -63,6 +65,7 @@ class VeiculoFormTests(TestCase):
 
 class VeiculoCadastroTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         self.cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
 
     def dados(self, **extra):
@@ -122,6 +125,9 @@ class ClienteBuscaViewTests(TestCase):
         cls.bruno = Cliente.objects.create(
             nome='Bruno Lima', cpf='555.666.777-88', email='bruno@example.com', telefone='(11) 98888-7777'
         )
+
+    def setUp(self):
+        entrar(self.client)
 
     def buscar(self, termo):
         resposta = self.client.get(reverse('veiculos_buscar_clientes'), {'q': termo})

@@ -15,6 +15,7 @@ from django.urls import reverse
 
 from clientes.models import Cliente
 from manutencoes.models import Manutencao, Peca
+from usuarios.apoio_testes import entrar
 from veiculos.models import Veiculo
 
 from .ambiente import banco_mysql_da_url, ler_bool, ler_lista
@@ -37,6 +38,9 @@ class AcessibilidadeTests(TestCase):
             valor=250,
         )
         cls.peca = Peca.objects.create(nome='Filtro de óleo', preco_custo=30)
+
+    def setUp(self):
+        entrar(self.client)
 
     def paginas(self):
         return {

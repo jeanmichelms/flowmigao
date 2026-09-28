@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 
+from usuarios.apoio_testes import entrar
 from veiculos.models import Veiculo
 
 from .forms import ClienteForm
@@ -54,6 +55,7 @@ class ClienteFormTests(TestCase):
 
 class ClienteViewsTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         self.cliente = Cliente.objects.create(nome='Ana Souza', cpf='111.222.333-44', email='ana@example.com')
 
     def test_lista_clientes_em_ordem_alfabetica(self):

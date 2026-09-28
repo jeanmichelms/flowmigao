@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from clientes.models import Cliente
+from usuarios.apoio_testes import entrar
 from veiculos.models import Veiculo
 
 from .forms import ManutencaoForm, add_months
@@ -104,6 +105,7 @@ class AvisoRevisaoEmailTests(TestCase):
 
 class PecaCadastroTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
         veiculo = Veiculo.objects.create(cliente=cliente, marca='Fiat', modelo='Uno', ano=2020, placa='XYZ9A87')
         self.manutencao = Manutencao.objects.create(
@@ -203,6 +205,7 @@ class AddMonthsTests(SimpleTestCase):
 
 class ManutencaoCadastroTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         self.cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
         self.veiculo = Veiculo.objects.create(cliente=self.cliente, marca='Fiat', modelo='Uno', ano=2020, placa='XYZ9A87')
 
@@ -277,6 +280,9 @@ class VeiculoBuscaViewTests(TestCase):
         Veiculo.objects.create(cliente=ana, marca='Fiat', modelo='Uno', ano=2015, placa='ABC1D23')
         Veiculo.objects.create(cliente=bruno, marca='VW', modelo='Gol', ano=2020, placa='XYZ9A87')
 
+    def setUp(self):
+        entrar(self.client)
+
     def buscar(self, termo):
         resposta = self.client.get(reverse('manutencoes_buscar_veiculos'), {'q': termo})
         self.assertEqual(resposta.status_code, 200)
@@ -301,6 +307,7 @@ class VeiculoBuscaViewTests(TestCase):
 
 class PainelGerencialTests(TestCase):
     def setUp(self):
+        entrar(self.client)
         self.hoje = timezone.localdate()
         self.mes_passado = add_months(self.hoje.replace(day=1), -1)
 

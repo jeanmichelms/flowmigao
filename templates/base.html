@@ -115,6 +115,18 @@
         input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
             border: 2px solid #b91c1c;
         }
+        /* Caixa de marcar ao lado do rótulo (ex.: "Administrador") */
+        .campo-marcar input[type="checkbox"] {
+            width: auto;
+            margin: 0 8px 0 0;
+            transform: scale(1.3);
+        }
+        .campo-marcar label {
+            display: inline;
+        }
+        .form-login {
+            max-width: 420px;
+        }
         textarea {
             min-height: 120px;
             resize: vertical;
@@ -156,6 +168,25 @@
         .resumo-erros a {
             color: #b91c1c;
             font-weight: bold;
+        }
+        /* Mensagens de confirmação/erro após salvar ou excluir */
+        .mensagens {
+            list-style: none;
+            margin: 0 0 20px;
+            padding: 0;
+        }
+        .mensagens li {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            border: 2px solid #15803d;
+            background: #f0fdf4;
+            color: #14532d;
+        }
+        .mensagens li.error {
+            border-color: #b91c1c;
+            background: #fef2f2;
+            color: #7f1d1d;
         }
         .detalhes {
             display: grid;
@@ -243,7 +274,8 @@
             flex-wrap: wrap;
             gap: 6px;
         }
-        .barra-acessibilidade button {
+        .barra-acessibilidade button,
+        .sessao-usuario button {
             background: transparent;
             color: white;
             border: 1px solid #9ca3af;
@@ -254,13 +286,34 @@
             font-weight: bold;
             cursor: pointer;
         }
-        .barra-acessibilidade button:hover {
+        .barra-acessibilidade button:hover,
+        .sessao-usuario button:hover {
             background: #374151;
         }
         .barra-acessibilidade button[aria-pressed="true"] {
             background: #fbbf24;
             color: #111827;
             border-color: #fbbf24;
+        }
+        /* Usuário logado, "Alterar senha" e "Sair" */
+        .sessao-usuario {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 6px 12px;
+        }
+        .sessao-usuario form {
+            margin: 0;
+        }
+        .sessao-usuario a {
+            color: white;
+            font-weight: bold;
+        }
+        .acoes-cabecalho {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
         }
         header button:focus-visible {
             outline-color: #fbbf24;
@@ -278,6 +331,7 @@
         html.alto-contraste .container,
         html.alto-contraste .modal-content,
         html.alto-contraste .card-resumo,
+        html.alto-contraste .mensagens li,
         html.alto-contraste table,
         html.alto-contraste th,
         html.alto-contraste td {
@@ -288,6 +342,7 @@
         html.alto-contraste .container,
         html.alto-contraste .modal-content,
         html.alto-contraste .card-resumo,
+        html.alto-contraste .mensagens li,
         html.alto-contraste table,
         html.alto-contraste th,
         html.alto-contraste td,
@@ -302,12 +357,14 @@
         }
         html.alto-contraste a,
         html.alto-contraste .marca,
-        html.alto-contraste nav a {
+        html.alto-contraste nav a,
+        html.alto-contraste .sessao-usuario a {
             color: #ff0 !important;
             text-decoration: underline !important;
         }
         html.alto-contraste .btn,
-        html.alto-contraste .barra-acessibilidade button {
+        html.alto-contraste .barra-acessibilidade button,
+        html.alto-contraste .sessao-usuario button {
             background: #000 !important;
             color: #ff0 !important;
             border: 2px solid #ff0 !important;
@@ -315,6 +372,7 @@
         }
         html.alto-contraste .btn:hover,
         html.alto-contraste .barra-acessibilidade button:hover,
+        html.alto-contraste .sessao-usuario button:hover,
         html.alto-contraste .barra-acessibilidade button[aria-pressed="true"] {
             background: #ff0 !important;
             color: #000 !important;
@@ -367,15 +425,28 @@
     <header>
         <div class="topo">
             <a class="marca" href="{% url 'home' %}">FlowMigao</a>
-            <div class="barra-acessibilidade" role="group" aria-label="Opções de acessibilidade">
-                <button type="button" id="fonte-diminuir" aria-label="Diminuir tamanho da fonte">A−</button>
-                <button type="button" id="fonte-padrao" aria-label="Tamanho de fonte padrão">A</button>
-                <button type="button" id="fonte-aumentar" aria-label="Aumentar tamanho da fonte">A+</button>
-                <button type="button" id="alto-contraste" aria-pressed="false">
-                    <span aria-hidden="true">◐</span> Alto contraste
-                </button>
+            <div class="acoes-cabecalho">
+                <div class="barra-acessibilidade" role="group" aria-label="Opções de acessibilidade">
+                    <button type="button" id="fonte-diminuir" aria-label="Diminuir tamanho da fonte">A−</button>
+                    <button type="button" id="fonte-padrao" aria-label="Tamanho de fonte padrão">A</button>
+                    <button type="button" id="fonte-aumentar" aria-label="Aumentar tamanho da fonte">A+</button>
+                    <button type="button" id="alto-contraste" aria-pressed="false">
+                        <span aria-hidden="true">◐</span> Alto contraste
+                    </button>
+                </div>
+                {% if user.is_authenticated %}
+                <div class="sessao-usuario">
+                    <span>Usuário: <strong>{{ user.get_username }}</strong></span>
+                    <a href="{% url 'alterar_senha' %}"{% if request.resolver_match.url_name == 'alterar_senha' %} aria-current="page"{% endif %}>Alterar senha</a>
+                    <form method="post" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit">Sair</button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
+        {% if user.is_authenticated %}
         <nav aria-label="Menu principal">
             {% with rota=request.resolver_match.url_name|default:'' %}
             <ul>
@@ -385,12 +456,23 @@
                 <li><a href="{% url 'pecas_lista' %}"{% if 'pecas_' in rota %} aria-current="page"{% endif %}>Peças</a></li>
                 <li><a href="{% url 'manutencoes_lista' %}"{% if 'manutencoes_' in rota %} aria-current="page"{% endif %}>Manutenções</a></li>
                 <li><a href="{% url 'dashboard' %}"{% if rota == 'dashboard' %} aria-current="page"{% endif %}>Painel Gerencial</a></li>
+                {% if user.is_superuser %}
+                <li><a href="{% url 'usuarios_lista' %}"{% if 'usuarios_' in rota %} aria-current="page"{% endif %}>Usuários</a></li>
+                {% endif %}
             </ul>
             {% endwith %}
         </nav>
+        {% endif %}
     </header>
 
     <main id="conteudo" class="container" tabindex="-1">
+        {% if messages %}
+        <ul class="mensagens" role="status">
+            {% for mensagem in messages %}
+            <li{% if mensagem.tags %} class="{{ mensagem.tags }}"{% endif %}>{{ mensagem }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 
