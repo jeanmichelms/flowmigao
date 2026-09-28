@@ -1,0 +1,6 @@
+{% with rota=request.resolver_match.url_name %}
+<nav class="abas" aria-label="Seções da auditoria">
+    <a href="{% url 'auditoria_lista' %}"{% if rota == 'auditoria_lista' %} aria-current="page"{% endif %}>Alterações de registros</a>
+    <a href="{% url 'auditoria_logins' %}"{% if rota == 'auditoria_logins' %} aria-current="page"{% endif %}>Logins malsucedidos</a>
+</nav>
+{% endwith %}
