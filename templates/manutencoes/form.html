@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 
+{% block title %}{% if object %}Editar{% else %}Nova{% endif %} Manutenção{% endblock %}
+
 {% block content %}
-<h2>{% if object %}Editar{% else %}Nova{% endif %} Manutenção</h2>
+<h1>{% if object %}Editar{% else %}Nova{% endif %} Manutenção</h1>
+{% include 'includes/resumo_erros.html' with form=form %}
+<p class="aviso-obrigatorio">Campos marcados com <span class="obrigatorio">*</span> são obrigatórios.</p>
 <form method="post">
     {% csrf_token %}
 
-    {% if form.non_field_errors %}
-        <div class="error-list">{{ form.non_field_errors }}</div>
-    {% endif %}
-
     <div class="form-group">
-        <label for="id_veiculo_busca">Veículo</label>
+        <label for="id_veiculo_busca">Veículo <span class="obrigatorio" aria-hidden="true">*</span></label>
         {{ form.veiculo }}
         <div class="veiculo-selector">
             <input
@@ -19,81 +19,54 @@
                 value="{% if form.instance.pk and form.instance.veiculo %}{{ form.instance.veiculo.cliente.nome }} ({{ form.instance.veiculo.cliente.cpf }}) - {{ form.instance.veiculo.marca }} - {{ form.instance.veiculo.modelo }} ({{ form.instance.veiculo.ano }}) - {{ form.instance.veiculo.placa }}{% elif selected_veiculo %}{{ selected_veiculo.cliente.nome }} ({{ selected_veiculo.cliente.cpf }}) - {{ selected_veiculo.marca }} - {{ selected_veiculo.modelo }} ({{ selected_veiculo.ano }}) - {{ selected_veiculo.placa }}{% elif form.initial.veiculo %}{{ form.initial.veiculo.cliente.nome }} ({{ form.initial.veiculo.cliente.cpf }}) - {{ form.initial.veiculo.marca }} - {{ form.initial.veiculo.modelo }} ({{ form.initial.veiculo.ano }}) - {{ form.initial.veiculo.placa }}{% endif %}"
                 placeholder="Selecione um veículo pela lupa"
                 readonly
+                aria-required="true"
+                aria-describedby="id_veiculo_busca_ajuda{% if form.veiculo.errors %} id_veiculo_error{% endif %}"
+                {% if form.veiculo.errors %}aria-invalid="true"{% endif %}
             >
-            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-veiculo" aria-label="Buscar veículo">🔍</button>
+            <button type="button" class="btn btn-secondary btn-lupa" id="abrir-modal-veiculo" aria-haspopup="dialog">
+                <span aria-hidden="true">🔍</span><span class="visually-hidden">Buscar veículo</span>
+            </button>
         </div>
-        {% if form.veiculo.errors %}<div class="field-error">{{ form.veiculo.errors|join:', ' }}</div>{% endif %}
+        <div class="ajuda" id="id_veiculo_busca_ajuda">Use o botão de busca (lupa) para escolher o veículo.</div>
+        {% if form.veiculo.errors %}<div class="field-error" id="id_veiculo_error">{{ form.veiculo.errors|join:' ' }}</div>{% endif %}
     </div>
 
-    <div class="form-group">
-        <label for="{{ form.tipo.id_for_label }}">{{ form.tipo.label }}</label>
-        {{ form.tipo }}
-        {% if form.tipo.errors %}<div class="field-error">{{ form.tipo.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.data_manutencao.id_for_label }}">{{ form.data_manutencao.label }}</label>
-        {{ form.data_manutencao }}
-        {% if form.data_manutencao.errors %}<div class="field-error">{{ form.data_manutencao.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.data_proxima_manutencao.id_for_label }}">{{ form.data_proxima_manutencao.label }}</label>
-        {{ form.data_proxima_manutencao }}
-        {% if form.data_proxima_manutencao.errors %}<div class="field-error">{{ form.data_proxima_manutencao.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.quilometragem.id_for_label }}">{{ form.quilometragem.label }}</label>
-        {{ form.quilometragem }}
-        {% if form.quilometragem.errors %}<div class="field-error">{{ form.quilometragem.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.valor.id_for_label }}">{{ form.valor.label }}</label>
-        {{ form.valor }}
-        {% if form.valor.errors %}<div class="field-error">{{ form.valor.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.descricao.id_for_label }}">{{ form.descricao.label }}</label>
-        {{ form.descricao }}
-        {% if form.descricao.errors %}<div class="field-error">{{ form.descricao.errors|join:', ' }}</div>{% endif %}
-    </div>
-
-    <div class="form-group">
-        <label for="{{ form.observacoes.id_for_label }}">{{ form.observacoes.label }}</label>
-        {{ form.observacoes }}
-        {% if form.observacoes.errors %}<div class="field-error">{{ form.observacoes.errors|join:', ' }}</div>{% endif %}
-    </div>
+    {% include 'includes/campo.html' with campo=form.tipo %}
+    {% include 'includes/campo.html' with campo=form.data_manutencao %}
+    {% include 'includes/campo.html' with campo=form.data_proxima_manutencao %}
+    {% include 'includes/campo.html' with campo=form.quilometragem %}
+    {% include 'includes/campo.html' with campo=form.valor %}
+    {% include 'includes/campo.html' with campo=form.descricao %}
+    {% include 'includes/campo.html' with campo=form.observacoes %}
 
     <button class="btn" type="submit">Salvar</button>
     <a class="btn btn-secondary" href="{{ cancel_url }}">Cancelar</a>
 </form>
 
-<div class="modal-overlay" id="modal-veiculo" hidden aria-hidden="true">
-    <div class="modal-content">
+<div class="modal-overlay" id="modal-veiculo" hidden>
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-veiculo">
         <div class="modal-header">
-            <h3>Pesquisar veículo</h3>
+            <h2 id="titulo-modal-veiculo">Pesquisar veículo</h2>
             <button type="button" class="btn btn-secondary btn-fechar" id="fechar-modal-veiculo">Fechar</button>
         </div>
 
         <div class="form-group">
             <label for="filtro-veiculo">Buscar por nome do cliente, CPF, marca, modelo, ano ou placa</label>
-            <input type="text" id="filtro-veiculo" placeholder="Digite para filtrar veículos">
+            <input type="search" id="filtro-veiculo" placeholder="Digite para filtrar veículos">
         </div>
 
         <div class="table-responsive">
             <table>
+                <caption class="visually-hidden">Resultado da pesquisa de veículos</caption>
                 <thead>
                     <tr>
-                        <th>Cliente</th>
-                        <th>CPF</th>
-                        <th>Marca</th>
-                        <th>Modelo</th>
-                        <th>Ano</th>
-                        <th>Placa</th>
-                        <th>Ação</th>
+                        <th scope="col">Cliente</th>
+                        <th scope="col">CPF</th>
+                        <th scope="col">Marca</th>
+                        <th scope="col">Modelo</th>
+                        <th scope="col">Ano</th>
+                        <th scope="col">Placa</th>
+                        <th scope="col">Ação</th>
                     </tr>
                 </thead>
                 <tbody id="resultado-veiculos">
@@ -107,9 +80,6 @@
 </div>
 
 <style>
-    .form-group {
-        margin-bottom: 16px;
-    }
     .veiculo-selector {
         display: flex;
         gap: 10px;
@@ -145,6 +115,7 @@
         border-radius: 8px;
         padding: 24px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        box-sizing: border-box;
     }
     .modal-header {
         display: flex;
@@ -153,16 +124,12 @@
         gap: 12px;
         margin-bottom: 16px;
     }
+    .modal-header h2 {
+        font-size: 1.3rem;
+        margin: 0;
+    }
     .btn-fechar {
         width: auto;
-    }
-    .table-responsive {
-        overflow-x: auto;
-    }
-    .field-error, .error-list {
-        color: #b91c1c;
-        margin-top: 6px;
-        font-size: 0.95rem;
     }
     .btn-selecionar {
         width: auto;
@@ -172,7 +139,7 @@
 
 <script>
     (function () {
-        const modal = document.getElementById('modal-veiculo');
+        const modalEl = document.getElementById('modal-veiculo');
         const abrirModalBtn = document.getElementById('abrir-modal-veiculo');
         const fecharModalBtn = document.getElementById('fechar-modal-veiculo');
         const filtroInput = document.getElementById('filtro-veiculo');
@@ -181,6 +148,13 @@
         const veiculoBuscaInput = document.getElementById('id_veiculo_busca');
         const buscarUrl = "{% url 'manutencoes_buscar_veiculos' %}";
         let debounceTimer = null;
+
+        const modal = FlowMigao.criarModal(modalEl, {
+            focoInicial: filtroInput,
+            aoAbrir: function () {
+                buscarVeiculos(filtroInput.value);
+            },
+        });
 
         function escapeHtml(valor) {
             return String(valor ?? '')
@@ -191,25 +165,10 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function abrirModal() {
-            modal.hidden = false;
-            modal.setAttribute('aria-hidden', 'false');
-            modal.classList.add('is-open');
-            document.body.style.overflow = 'hidden';
-            filtroInput.focus();
-            buscarVeiculos(filtroInput.value);
-        }
-
-        function fecharModal() {
-            modal.classList.remove('is-open');
-            modal.hidden = true;
-            modal.setAttribute('aria-hidden', 'true');
-            document.body.style.overflow = '';
-        }
-
         function renderResultados(veiculos) {
             if (!veiculos.length) {
                 resultadoBody.innerHTML = '<tr><td colspan="7">Nenhum veículo encontrado.</td></tr>';
+                FlowMigao.anunciar('Nenhum veículo encontrado.');
                 return;
             }
 
@@ -223,17 +182,22 @@
                         <td>${escapeHtml(veiculo.modelo)}</td>
                         <td>${escapeHtml(veiculo.ano)}</td>
                         <td>${escapeHtml(veiculo.placa)}</td>
-                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(veiculo.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar</button></td>
+                        <td><button type="button" class="btn btn-selecionar" data-id="${escapeHtml(veiculo.id)}" data-resumo="${escapeHtml(resumo)}">Selecionar<span class="visually-hidden"> veículo placa ${escapeHtml(veiculo.placa)}</span></button></td>
                     </tr>
                 `;
             }).join('');
+
+            FlowMigao.anunciar(
+                veiculos.length === 1 ? '1 veículo encontrado.' : `${veiculos.length} veículos encontrados.`
+            );
 
             resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
                 botao.addEventListener('click', function (event) {
                     event.preventDefault();
                     veiculoHiddenInput.value = this.dataset.id;
                     veiculoBuscaInput.value = this.dataset.resumo;
-                    fecharModal();
+                    modal.fechar();
+                    FlowMigao.anunciar(`Veículo selecionado: ${this.dataset.resumo}.`);
                 });
             });
         }
@@ -255,29 +219,18 @@
                 })
                 .catch(function () {
                     resultadoBody.innerHTML = '<tr><td colspan="7">Erro ao buscar veículos.</td></tr>';
+                    FlowMigao.anunciar('Erro ao buscar veículos.');
                 });
         }
 
         abrirModalBtn.addEventListener('click', function (event) {
             event.preventDefault();
-            abrirModal();
+            modal.abrir();
         });
 
         fecharModalBtn.addEventListener('click', function (event) {
             event.preventDefault();
-            fecharModal();
-        });
-
-        modal.addEventListener('click', function (event) {
-            if (event.target === modal) {
-                fecharModal();
-            }
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && !modal.hidden) {
-                fecharModal();
-            }
+            modal.fechar();
         });
 
         filtroInput.addEventListener('input', function () {

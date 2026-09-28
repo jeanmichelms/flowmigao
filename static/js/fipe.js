@@ -32,22 +32,30 @@ document.addEventListener('DOMContentLoaded', function() {
     function carregarModelos(marcaCodigo, modeloSelecionado) {
         selectModelo.innerHTML = '<option value="">Carregando modelos...</option>';
         selectModelo.disabled = true;
+        selectModelo.setAttribute('aria-busy', 'true');
 
         fetch(`${BASE_URL}/marcas/${marcaCodigo}/modelos`)
             .then(response => response.json())
             .then(dados => {
                 selectModelo.innerHTML = '<option value="">Selecione o Modelo</option>';
                 selectModelo.disabled = false;
+                selectModelo.removeAttribute('aria-busy');
 
                 dados.modelos.forEach(modelo => {
                     selectModelo.appendChild(criarOpcao(modelo.nome, modelo.nome));
                 });
                 selecionarValor(selectModelo, modeloSelecionado);
+                // Só avisa quando o usuário trocou a marca (na edição o modelo já vem pronto)
+                if (!modeloSelecionado) {
+                    FlowMigao.anunciar(`${dados.modelos.length} modelos disponíveis para esta marca.`);
+                }
             })
             .catch(error => {
                 console.error('Erro ao carregar modelos:', error);
                 selectModelo.innerHTML = '<option value="">Erro ao carregar</option>';
                 selectModelo.disabled = false;
+                selectModelo.removeAttribute('aria-busy');
+                FlowMigao.anunciar('Erro ao carregar os modelos. Tente novamente mais tarde.');
                 selecionarValor(selectModelo, modeloSelecionado);
             });
     }
@@ -72,7 +80,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         // Sem a API, os valores atuais enviados pelo servidor continuam no select
-        .catch(error => console.error('Erro ao carregar marcas:', error));
+        .catch(error => {
+            console.error('Erro ao carregar marcas:', error);
+            FlowMigao.anunciar('Erro ao carregar a lista de marcas.');
+        });
 
     // 2. Escuta quando o usuário escolhe uma marca
     selectMarca.addEventListener('change', function() {

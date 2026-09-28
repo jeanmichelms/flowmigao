@@ -1,35 +1,63 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+{% load static %}<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlowMigao</title>
+    <title>{% block title %}Início{% endblock %} – FlowMigao</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             background: #f4f6f8;
+            color: #111827;
+            line-height: 1.5;
         }
         header {
             background: #1f2937;
             color: white;
             padding: 16px;
         }
+        .marca {
+            display: inline-block;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            text-decoration: none;
+            margin-bottom: 8px;
+        }
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 16px;
+        }
         nav a {
             color: white;
-            margin-right: 16px;
             text-decoration: none;
             font-weight: bold;
+            padding: 4px 2px;
+        }
+        nav a:hover,
+        nav a[aria-current="page"] {
+            text-decoration: underline;
+            text-underline-offset: 4px;
         }
         .container {
-            width: 90%;
-            max-width: 1100px;
+            width: 95%;
+            max-width: 1400px;
             margin: 30px auto;
             background: white;
             padding: 24px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            box-sizing: border-box;
+        }
+        .container h1 {
+            font-size: 1.6rem;
+            margin-top: 0;
         }
         table {
             width: 100%;
@@ -42,6 +70,12 @@
             padding: 10px;
             text-align: left;
         }
+        .table-responsive {
+            /* relative: mantém os textos .visually-hidden da tabela dentro da área com rolagem */
+            position: relative;
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
         .btn {
             display: inline-block;
             padding: 10px 14px;
@@ -51,6 +85,9 @@
             border-radius: 6px;
             border: none;
             cursor: pointer;
+            font-size: 1rem;
+            /* Espaço vertical quando os botões quebram linha e ficam um sobre o outro */
+            margin: 3px 0;
         }
         .btn-danger {
             background: #dc2626;
@@ -58,15 +95,25 @@
         .btn-secondary {
             background: #6b7280;
         }
+        .acoes-topo {
+            margin-bottom: 20px;
+        }
         form p {
             margin-bottom: 12px;
+        }
+        .form-group {
+            margin-bottom: 16px;
         }
         input, select, textarea {
             width: 100%;
             padding: 10px;
-            border: 1px solid #ccc;
+            border: 1px solid #6b7280;
             border-radius: 6px;
             box-sizing: border-box;
+            font-size: 1rem;
+        }
+        input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
+            border: 2px solid #b91c1c;
         }
         textarea {
             min-height: 120px;
@@ -77,23 +124,277 @@
             margin-bottom: 6px;
             font-weight: bold;
         }
+        .obrigatorio {
+            color: #b91c1c;
+        }
+        .aviso-obrigatorio,
+        .ajuda {
+            color: #4b5563;
+            font-size: 0.95rem;
+        }
+        .field-error,
+        .error-list,
+        .mensagem-erro {
+            color: #b91c1c;
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+        .field-error::before {
+            content: "⚠ ";
+        }
+        .resumo-erros {
+            border: 3px solid #b91c1c;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+        }
+        .resumo-erros h2 {
+            font-size: 1.1rem;
+            margin: 0 0 8px;
+            color: #b91c1c;
+        }
+        .resumo-erros a {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+        .detalhes {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 8px 16px;
+            margin: 0 0 20px;
+        }
+        .detalhes dt {
+            font-weight: bold;
+        }
+        .detalhes dd {
+            margin: 0;
+        }
+        @media (max-width: 600px) {
+            /* No celular, aproveita quase toda a largura da tela */
+            .container {
+                width: auto;
+                margin: 16px;
+                padding: 16px;
+            }
+            .detalhes {
+                grid-template-columns: 1fr;
+            }
+            .detalhes dd {
+                margin-bottom: 8px;
+            }
+        }
+
+        /* Foco sempre visível para quem navega pelo teclado */
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        [tabindex]:focus-visible {
+            outline: 3px solid #1d4ed8;
+            outline-offset: 2px;
+        }
+        header a:focus-visible {
+            outline-color: #fbbf24;
+        }
+        #conteudo:focus {
+            outline: none;
+        }
+
+        /* Esconde visualmente, mas mantém o texto para leitores de tela */
+        .visually-hidden {
+            position: absolute !important;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        /* Link "Pular para o conteúdo": aparece só quando recebe foco */
+        .pular-conteudo {
+            position: absolute;
+            left: 16px;
+            top: -100px;
+            background: #fbbf24;
+            color: #111827;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 2000;
+        }
+        .pular-conteudo:focus {
+            top: 16px;
+        }
+
+        /* Barra de acessibilidade (tamanho da fonte e alto contraste) */
+        .topo {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px 16px;
+        }
+        .barra-acessibilidade {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .barra-acessibilidade button {
+            background: transparent;
+            color: white;
+            border: 1px solid #9ca3af;
+            border-radius: 6px;
+            padding: 6px 10px;
+            min-width: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .barra-acessibilidade button:hover {
+            background: #374151;
+        }
+        .barra-acessibilidade button[aria-pressed="true"] {
+            background: #fbbf24;
+            color: #111827;
+            border-color: #fbbf24;
+        }
+        header button:focus-visible {
+            outline-color: #fbbf24;
+        }
+
+        /* Tamanho da fonte: todos os tamanhos usam rem, então basta mudar a raiz */
+        html[data-fonte="1"] { font-size: 112.5%; }
+        html[data-fonte="2"] { font-size: 125%; }
+        html[data-fonte="3"] { font-size: 150%; }
+
+        /* Alto contraste: fundo preto, texto branco, links e botões em amarelo.
+           !important para sobrepor também os estilos próprios de cada página. */
+        html.alto-contraste body,
+        html.alto-contraste header,
+        html.alto-contraste .container,
+        html.alto-contraste .modal-content,
+        html.alto-contraste .card-resumo,
+        html.alto-contraste table,
+        html.alto-contraste th,
+        html.alto-contraste td {
+            background: #000 !important;
+            color: #fff !important;
+            box-shadow: none !important;
+        }
+        html.alto-contraste .container,
+        html.alto-contraste .modal-content,
+        html.alto-contraste .card-resumo,
+        html.alto-contraste table,
+        html.alto-contraste th,
+        html.alto-contraste td,
+        html.alto-contraste hr {
+            border: 1px solid #fff !important;
+        }
+        html.alto-contraste header {
+            border-bottom: 2px solid #fff !important;
+        }
+        html.alto-contraste .modal-overlay {
+            background: rgba(0, 0, 0, 0.85) !important;
+        }
+        html.alto-contraste a,
+        html.alto-contraste .marca,
+        html.alto-contraste nav a {
+            color: #ff0 !important;
+            text-decoration: underline !important;
+        }
+        html.alto-contraste .btn,
+        html.alto-contraste .barra-acessibilidade button {
+            background: #000 !important;
+            color: #ff0 !important;
+            border: 2px solid #ff0 !important;
+            text-decoration: none !important;
+        }
+        html.alto-contraste .btn:hover,
+        html.alto-contraste .barra-acessibilidade button:hover,
+        html.alto-contraste .barra-acessibilidade button[aria-pressed="true"] {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+        html.alto-contraste input,
+        html.alto-contraste select,
+        html.alto-contraste textarea {
+            background: #000 !important;
+            color: #fff !important;
+            border: 2px solid #fff !important;
+        }
+        html.alto-contraste input::placeholder,
+        html.alto-contraste textarea::placeholder {
+            color: #ccc !important;
+        }
+        html.alto-contraste input[aria-invalid="true"],
+        html.alto-contraste select[aria-invalid="true"],
+        html.alto-contraste textarea[aria-invalid="true"] {
+            border: 3px dashed #ff8080 !important;
+        }
+        html.alto-contraste .ajuda,
+        html.alto-contraste .aviso-obrigatorio {
+            color: #fff !important;
+        }
+        html.alto-contraste .field-error,
+        html.alto-contraste .error-list,
+        html.alto-contraste .mensagem-erro,
+        html.alto-contraste .obrigatorio,
+        html.alto-contraste .resumo-erros h2,
+        html.alto-contraste .resumo-erros a {
+            color: #ff8080 !important;
+        }
+        html.alto-contraste .resumo-erros {
+            border-color: #ff8080 !important;
+        }
+        html.alto-contraste .pular-conteudo {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+        html.alto-contraste :focus-visible {
+            outline: 3px solid #0ff !important;
+            outline-offset: 2px;
+        }
     </style>
+    <script src="{% static 'js/acessibilidade.js' %}"></script>
 </head>
 <body>
+    <a class="pular-conteudo" href="#conteudo">Pular para o conteúdo</a>
+
     <header>
-        <h1>FlowMigao</h1>
-        <nav>
-            <a href="/">Início</a>
-            <a href="/clientes/">Clientes</a>
-            <a href="/veiculos/">Veículos</a>
-            <a href="{% url 'pecas_lista' %}">Peças</a>
-            <a href="/manutencoes/">Manutenções</a>
-            <a href="{% url 'dashboard' %}">Painel Gerencial</a>
+        <div class="topo">
+            <a class="marca" href="{% url 'home' %}">FlowMigao</a>
+            <div class="barra-acessibilidade" role="group" aria-label="Opções de acessibilidade">
+                <button type="button" id="fonte-diminuir" aria-label="Diminuir tamanho da fonte">A−</button>
+                <button type="button" id="fonte-padrao" aria-label="Tamanho de fonte padrão">A</button>
+                <button type="button" id="fonte-aumentar" aria-label="Aumentar tamanho da fonte">A+</button>
+                <button type="button" id="alto-contraste" aria-pressed="false">
+                    <span aria-hidden="true">◐</span> Alto contraste
+                </button>
+            </div>
+        </div>
+        <nav aria-label="Menu principal">
+            {% with rota=request.resolver_match.url_name|default:'' %}
+            <ul>
+                <li><a href="{% url 'home' %}"{% if rota == 'home' %} aria-current="page"{% endif %}>Início</a></li>
+                <li><a href="{% url 'clientes_lista' %}"{% if 'clientes_' in rota %} aria-current="page"{% endif %}>Clientes</a></li>
+                <li><a href="{% url 'veiculos_lista' %}"{% if 'veiculos_' in rota %} aria-current="page"{% endif %}>Veículos</a></li>
+                <li><a href="{% url 'pecas_lista' %}"{% if 'pecas_' in rota %} aria-current="page"{% endif %}>Peças</a></li>
+                <li><a href="{% url 'manutencoes_lista' %}"{% if 'manutencoes_' in rota %} aria-current="page"{% endif %}>Manutenções</a></li>
+                <li><a href="{% url 'dashboard' %}"{% if rota == 'dashboard' %} aria-current="page"{% endif %}>Painel Gerencial</a></li>
+            </ul>
+            {% endwith %}
         </nav>
     </header>
 
-    <div class="container">
+    <main id="conteudo" class="container" tabindex="-1">
         {% block content %}{% endblock %}
-    </div>
+    </main>
+
+    <!-- Mensagens dinâmicas (buscas, CEP, FIPE) lidas pelos leitores de tela -->
+    <div id="anuncios" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

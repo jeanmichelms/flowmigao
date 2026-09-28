@@ -1,11 +1,13 @@
 {% extends 'base.html' %}
 
+{% block title %}Início{% endblock %}
+
 {% block content %}
-<h2>Bem-vindo ao FlowMigao</h2>
+<h1>Bem-vindo ao FlowMigao</h1>
 <p>Sistema de cadastro de clientes, veículos, peças e manutenções.</p>
-<a class="btn" href="/clientes/">Gerenciar Clientes</a>
-<a class="btn" href="/veiculos/">Gerenciar Veículos</a>
+<a class="btn" href="{% url 'clientes_lista' %}">Gerenciar Clientes</a>
+<a class="btn" href="{% url 'veiculos_lista' %}">Gerenciar Veículos</a>
 <a class="btn" href="{% url 'pecas_lista' %}">Gerenciar Peças</a>
-<a class="btn" href="/manutencoes/">Gerenciar Manutenções</a>
+<a class="btn" href="{% url 'manutencoes_lista' %}">Gerenciar Manutenções</a>
 <a class="btn" href="{% url 'dashboard' %}">Painel Gerencial</a>
 {% endblock %}
