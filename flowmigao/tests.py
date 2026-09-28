@@ -1,11 +1,20 @@
+import os
+import subprocess
+import sys
 from datetime import date
+from unittest import mock
 
-from django.test import TestCase
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
+from django.db import OperationalError
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from clientes.models import Cliente
 from manutencoes.models import Manutencao, Peca
 from veiculos.models import Veiculo
+
+from .ambiente import banco_mysql_da_url, ler_bool, ler_lista
 
 
 class AcessibilidadeTests(TestCase):
@@ -142,3 +151,134 @@ class AcessibilidadeTests(TestCase):
                     resposta, f'role="dialog" aria-modal="true" aria-labelledby="{titulo}"'
                 )
                 self.assertContains(resposta, 'aria-haspopup="dialog"')
+
+
+class SaudeTests(TestCase):
+    def test_responde_ok_quando_o_banco_conecta(self):
+        resposta = self.client.get(reverse('saude'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta.json(), {'status': 'ok'})
+
+    def test_responde_503_quando_o_banco_esta_fora(self):
+        with mock.patch('flowmigao.urls.connection.ensure_connection', side_effect=OperationalError):
+            resposta = self.client.get(reverse('saude'))
+
+        self.assertEqual(resposta.status_code, 503)
+        self.assertEqual(resposta.json()['status'], 'erro')
+
+
+class AmbienteTests(SimpleTestCase):
+    def test_converte_mysql_url_do_railway(self):
+        conexao = banco_mysql_da_url('mysql://root:s3nh4@mysql.railway.internal:3306/railway')
+
+        self.assertEqual(conexao, {
+            'NAME': 'railway',
+            'USER': 'root',
+            'PASSWORD': 's3nh4',
+            'HOST': 'mysql.railway.internal',
+            'PORT': '3306',
+        })
+
+    def test_decodifica_caracteres_especiais_e_usa_porta_padrao(self):
+        conexao = banco_mysql_da_url('mysql://app:a%40b%3Ac@db.exemplo.com/flowmigao')
+
+        self.assertEqual(conexao['PASSWORD'], 'a@b:c')
+        self.assertEqual(conexao['PORT'], '3306')
+
+    def test_rejeita_url_invalida(self):
+        for url in ('postgres://u:s@host/banco', 'mysql://u:s@host/', 'mysql:///banco'):
+            with self.subTest(url=url), self.assertRaises(ImproperlyConfigured):
+                banco_mysql_da_url(url)
+
+    def test_ler_lista_e_ler_bool(self):
+        with mock.patch.dict(os.environ, {'LISTA': ' a.com, ,b.com ', 'LIGADO': 'Sim', 'VAZIO': ''}):
+            self.assertEqual(ler_lista('LISTA'), ['a.com', 'b.com'])
+            self.assertEqual(ler_lista('NAO_EXISTE_XYZ'), [])
+            self.assertTrue(ler_bool('LIGADO', padrao=False))
+            self.assertTrue(ler_bool('VAZIO', padrao=True))
+            self.assertFalse(ler_bool('NAO_EXISTE_XYZ', padrao=False))
+
+
+NEUTRAS = (
+    'RAILWAY_ENVIRONMENT_ID', 'RAILWAY_PUBLIC_DOMAIN', 'DATABASE_URL', 'BREVO_API_KEY', 'EMAIL_BACKEND',
+    'DJANGO_DEBUG', 'DJANGO_SECRET_KEY', 'DJANGO_ALLOWED_HOSTS', 'DJANGO_CSRF_TRUSTED_ORIGINS',
+)
+
+
+class ConfiguracaoProducaoTests(SimpleTestCase):
+    """Carrega o settings em um processo separado, simulando as variáveis do Railway."""
+
+    CHAVE = 'chave-de-teste-com-mais-de-cinquenta-caracteres-0123456789abcdef'
+
+    def rodar(self, comando, **variaveis):
+        ambiente = dict(os.environ)
+        # Valores vazios têm prioridade sobre o .env local (o load_dotenv não sobrescreve),
+        # assim o resultado não depende da configuração da máquina de quem roda os testes.
+        for chave in NEUTRAS:
+            ambiente[chave] = ''
+        ambiente.update(variaveis)
+        return subprocess.run(
+            [sys.executable, '-c', comando],
+            cwd=settings.BASE_DIR, env=ambiente, capture_output=True, text=True, timeout=60,
+        )
+
+    def ler_settings(self, **variaveis):
+        comando = (
+            'import json, os; os.environ["DJANGO_SETTINGS_MODULE"] = "flowmigao.settings"; '
+            'from django.conf import settings as s; '
+            'print(json.dumps({"DEBUG": s.DEBUG, "HOSTS": s.ALLOWED_HOSTS, "CSRF": s.CSRF_TRUSTED_ORIGINS, '
+            '"SSL": getattr(s, "SECURE_SSL_REDIRECT", False), "BANCO": s.DATABASES["default"].get("HOST", ""), "EMAIL": s.EMAIL_BACKEND}))'
+        )
+        resultado = self.rodar(comando, **variaveis)
+        self.assertEqual(resultado.returncode, 0, resultado.stderr)
+        import json
+        return json.loads(resultado.stdout)
+
+    def test_no_railway_desliga_debug_e_libera_o_dominio_publico(self):
+        config = self.ler_settings(
+            RAILWAY_ENVIRONMENT_ID='abc',
+            RAILWAY_PUBLIC_DOMAIN='flowmigao.up.railway.app',
+            DJANGO_SECRET_KEY=self.CHAVE,
+            DATABASE_URL='mysql://root:senha@mysql.railway.internal:3306/railway',
+            BREVO_API_KEY='chave-brevo',
+        )
+
+        self.assertFalse(config['DEBUG'])
+        self.assertTrue(config['SSL'])
+        self.assertIn('flowmigao.up.railway.app', config['HOSTS'])
+        self.assertIn('healthcheck.railway.app', config['HOSTS'])
+        self.assertEqual(config['CSRF'], ['https://flowmigao.up.railway.app'])
+        self.assertEqual(config['BANCO'], 'mysql.railway.internal')
+        self.assertEqual(config['EMAIL'], 'flowmigao.email_brevo.BrevoEmailBackend')
+
+    def test_local_mantem_debug_ligado(self):
+        config = self.ler_settings(DB_ENGINE='sqlite')
+
+        self.assertTrue(config['DEBUG'])
+        self.assertFalse(config['SSL'])
+        self.assertEqual(config['HOSTS'], ['localhost', '127.0.0.1', '[::1]'])
+        self.assertEqual(config['EMAIL'], 'django.core.mail.backends.smtp.EmailBackend')
+
+    def test_producao_sem_chave_secreta_nao_sobe(self):
+        resultado = self.rodar(
+            'import os; os.environ["DJANGO_SETTINGS_MODULE"] = "flowmigao.settings"; '
+            'from django.conf import settings; settings.DEBUG',
+            RAILWAY_ENVIRONMENT_ID='abc',
+        )
+
+        self.assertNotEqual(resultado.returncode, 0)
+        self.assertIn('DJANGO_SECRET_KEY', resultado.stderr)
+
+    def test_checklist_de_deploy_do_django_sem_avisos(self):
+        resultado = self.rodar(
+            'import sys; from django.core.management import execute_from_command_line; '
+            'execute_from_command_line(["manage.py", "check", "--deploy", "--fail-level", "WARNING"])',
+            DJANGO_SETTINGS_MODULE='flowmigao.settings',
+            RAILWAY_ENVIRONMENT_ID='abc',
+            RAILWAY_PUBLIC_DOMAIN='flowmigao.up.railway.app',
+            DJANGO_SECRET_KEY=self.CHAVE,
+            DB_ENGINE='sqlite',
+        )
+
+        self.assertEqual(resultado.returncode, 0, resultado.stdout + resultado.stderr)

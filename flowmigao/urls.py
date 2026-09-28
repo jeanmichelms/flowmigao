@@ -15,15 +15,26 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.db import DatabaseError, connection
+from django.http import JsonResponse
 from django.urls import path, include
 from django.shortcuts import render
 
 def home(request):
     return render(request, 'home.html')
 
+def saude(request):
+    # Usado pelo healthcheck do Railway: o deploy só entra no ar se o app responder e o banco conectar
+    try:
+        connection.ensure_connection()
+    except DatabaseError:
+        return JsonResponse({'status': 'erro', 'banco': 'indisponível'}, status=503)
+    return JsonResponse({'status': 'ok'})
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', home, name='home'),
+    path('saude/', saude, name='saude'),
     path('clientes/', include('clientes.urls')),
     path('veiculos/', include('veiculos.urls')),
     path('manutencoes/', include('manutencoes.urls')),

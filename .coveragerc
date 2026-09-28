@@ -4,6 +4,7 @@ omit =
     .venv/*
     */migrations/*
     */tests.py
+    */tests_*.py
     manage.py
     flowmigao/asgi.py
     flowmigao/wsgi.py
