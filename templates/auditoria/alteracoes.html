@@ -1,0 +1,16 @@
+{% comment %}Campos de um registro de auditoria. Uso: {% include 'auditoria/alteracoes.html' with registro=registro %}{% endcomment %}
+<ul class="lista-alteracoes">
+    {% for item in registro.alteracoes %}
+    <li>
+        <strong>{{ item.campo }}:</strong>
+        {% if registro.acao == 'ALTERACAO' %}
+            <span class="visually-hidden">de</span> {{ item.de|default:'(vazio)' }}
+            <span aria-hidden="true">→</span><span class="visually-hidden">para</span> {{ item.para|default:'(vazio)' }}
+        {% elif registro.acao == 'INCLUSAO' %}
+            {{ item.para }}
+        {% else %}
+            {{ item.de }}
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>

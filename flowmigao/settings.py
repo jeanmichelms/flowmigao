@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'veiculos',    
     'manutencoes.apps.ManutencoesConfig',
     'usuarios.apps.UsuariosConfig',
+    'auditoria.apps.AuditoriaConfig',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +81,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     # Todas as páginas exigem login, exceto as marcadas com @login_not_required (login e /saude/)
     'django.contrib.auth.middleware.LoginRequiredMiddleware',
+    # Guarda quem está logado para a auditoria registrar o autor de cada alteração
+    'auditoria.contexto.UsuarioAtualMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -150,6 +153,10 @@ else:
             },
         }
     }
+
+# Cada requisição roda numa transação única: se algo falhar no meio (por exemplo, gravar a auditoria),
+# tudo o que a requisição alterou é desfeito, e nenhuma alteração fica sem o registro de quem a fez
+DATABASES['default']['ATOMIC_REQUESTS'] = True
 
 
 # Password validation

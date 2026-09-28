@@ -47,6 +47,23 @@ Todas as páginas exigem login, exceto a própria tela de login e o healthcheck 
   desfeita, mesmo pelo `/admin/` ou pelo shell.
 - Qualquer usuário pode trocar a própria senha em **Alterar senha**, no topo da página.
 
+## Auditoria
+
+Toda inclusão, alteração e exclusão de clientes, veículos, manutenções, peças, peças usadas e usuários
+fica registrada com o usuário, a data/hora e os campos que mudaram (valor anterior e novo). O registro
+é feito automaticamente pelos sinais do Django (app `auditoria`), então vale para todas as telas e
+também para o `/admin/`.
+
+- **Tela Auditoria** (só administradores): lista com filtros por tipo de registro, ação, usuário, período e texto.
+- **Telas de detalhe** de cliente, veículo e manutenção mostram quem cadastrou e quem fez a última alteração;
+  o administrador tem um link para o histórico completo daquele registro.
+- Alterações feitas fora de uma tela, como o aviso de revisão por e-mail marcando o envio, aparecem como **Sistema**.
+- Senhas nunca são gravadas: aparece só "Senha: (alterada)". Logins não geram registro.
+- Se um usuário for excluído, os registros dele continuam mostrando o nome.
+- Cada requisição roda numa transação única (`ATOMIC_REQUESTS`): se a auditoria falhar, a alteração também é
+  desfeita, então nenhuma mudança feita pelas telas fica sem registro.
+- Registros cadastrados antes desta funcionalidade não têm histórico de inclusão.
+
 ## Testes
 
 Os testes automatizados usam o framework de testes do Django e cobrem:
@@ -57,6 +74,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 | `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
 | `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, busca de veículos e aviso de revisão por e-mail |
 | `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
+| `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe |
 | `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
 
 Para rodar localmente:
