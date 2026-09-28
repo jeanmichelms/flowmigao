@@ -4,7 +4,11 @@
     {% include 'includes/resumo_erros.html' with form=filtro %}
     <div class="filtros-campos">
         {% for campo in filtro.visible_fields %}
-            {% include 'includes/campo.html' with campo=campo %}
+            {% if campo.name in filtro.campos_largos %}
+                {% include 'includes/campo.html' with campo=campo classe='campo-largo' %}
+            {% else %}
+                {% include 'includes/campo.html' with campo=campo %}
+            {% endif %}
         {% endfor %}
     </div>
     {% for campo in filtro.hidden_fields %}{{ campo }}{% endfor %}

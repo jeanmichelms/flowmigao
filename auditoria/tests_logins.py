@@ -76,10 +76,20 @@ class RegistroDeLoginMalsucedidoTests(TestCase):
         self.assertEqual(TentativaLogin.objects.get().motivo, Motivo.SENHA_INCORRETA)
 
     def test_ip_atras_do_proxy_do_railway(self):
-        # O último IP é o que o proxy acrescentou; o primeiro veio do navegador e pode ser forjado
-        self.tentar('maria', 'errada', HTTP_X_FORWARDED_FOR='1.2.3.4, 200.10.20.30')
+        # O primeiro IP é o de quem acessou; os seguintes são proxies internos do Railway
+        self.tentar('maria', 'errada', HTTP_X_FORWARDED_FOR='200.10.20.30, 100.64.0.7, 100.64.0.2')
 
         self.assertEqual(TentativaLogin.objects.get().ip, '200.10.20.30')
+
+    def test_ip_ignora_valores_invalidos(self):
+        self.tentar('maria', 'errada', HTTP_X_FORWARDED_FOR='unknown, 2804:14c::1')
+
+        self.assertEqual(TentativaLogin.objects.get().ip, '2804:14c::1')
+
+    def test_ip_sem_proxy_usa_o_endereco_da_conexao(self):
+        self.tentar('maria', 'errada', REMOTE_ADDR='192.168.0.15')
+
+        self.assertEqual(TentativaLogin.objects.get().ip, '192.168.0.15')
 
     def test_usuario_excluido_mantem_o_nome_informado(self):
         self.tentar('maria', 'errada')
