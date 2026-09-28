@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Entrar{% endblock %}
+
+{% block content %}
+<h1>Entrar no FlowMigao</h1>
+{% if form.non_field_errors %}
+<div class="resumo-erros" id="resumo-erros" tabindex="-1" aria-labelledby="resumo-erros-titulo">
+    <h2 id="resumo-erros-titulo">Não foi possível entrar</h2>
+    {% for erro in form.non_field_errors %}<p class="mensagem-erro">{{ erro }}</p>{% endfor %}
+</div>
+{% else %}
+{% include 'includes/resumo_erros.html' with form=form %}
+{% endif %}
+<form method="post" class="form-login">
+    {% csrf_token %}
+    {% for campo in form %}
+        {% include 'includes/campo.html' with campo=campo %}
+    {% endfor %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="btn" type="submit">Entrar</button>
+</form>
+{% endblock %}

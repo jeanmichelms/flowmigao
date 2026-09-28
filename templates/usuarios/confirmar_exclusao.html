@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Usuário{% endblock %}
+
+{% block content %}
+<h1>Excluir Usuário</h1>
+{% if motivo_bloqueio %}
+<p class="mensagem-erro">{{ motivo_bloqueio }}</p>
+<a class="btn btn-secondary" href="{% url 'usuarios_lista' %}">Voltar</a>
+{% else %}
+<p>Tem certeza que deseja excluir o usuário <strong>{{ object.username }}</strong>?</p>
+<form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Confirmar Exclusão</button>
+    <a class="btn btn-secondary" href="{% url 'usuarios_lista' %}">Cancelar</a>
+</form>
+{% endif %}
+{% endblock %}

@@ -27,11 +27,25 @@ Pré-requisitos: Python 3.12+ e MySQL 8.
    .venv\Scripts\activate
    pip install -r requirements.txt
    python manage.py migrate
-   python manage.py createsuperuser
    python manage.py runserver
    ```
 
-Acesse http://localhost:8000 (dashboard em `/manutencoes/dashboard/`, admin em `/admin/`).
+Acesse http://localhost:8000. A primeira tela é o **login** (dashboard em `/manutencoes/dashboard/`, admin em `/admin/`).
+
+## Usuários e login
+
+Todas as páginas exigem login, exceto a própria tela de login e o healthcheck `/saude/`.
+
+- **Primeiro acesso:** se a tabela de usuários estiver vazia, o `migrate` cria um administrador. O usuário e a
+  senha vêm de `DJANGO_ADMIN_USUARIO` (padrão `admin`) e `DJANGO_ADMIN_SENHA`; sem senha definida, uma senha
+  aleatória é gerada e mostrada no console do `migrate`. Troque-a em **Alterar senha** depois de entrar.
+  Bancos que já têm usuários (por exemplo, criados com `createsuperuser`) não são alterados.
+- **Perfis:** o **administrador** acessa a tela **Usuários** (cadastrar, editar, desativar, trocar senha e excluir).
+  O **usuário comum** usa o restante do sistema, mas não vê o menu Usuários e recebe "Acesso negado" se tentar abrir a tela.
+- **Regras:** ninguém pode excluir o próprio usuário, e o administrador também não pode remover o próprio perfil
+  de administrador nem se desativar. A tabela de usuários nunca fica vazia: a exclusão do último usuário é
+  desfeita, mesmo pelo `/admin/` ou pelo shell.
+- Qualquer usuário pode trocar a própria senha em **Alterar senha**, no topo da página.
 
 ## Testes
 
@@ -42,6 +56,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 | `clientes` | validação do formulário (CPF/e-mail únicos, e-mail inválido), cadastro, edição, detalhe e exclusão |
 | `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
 | `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, busca de veículos e aviso de revisão por e-mail |
+| `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
 | `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
 
 Para rodar localmente:
@@ -92,6 +107,7 @@ No Railway, `DEBUG` fica desligado automaticamente e o site passa a exigir HTTPS
    | `DJANGO_SECRET_KEY` | uma chave longa e aleatória, gerada com o comando abaixo |
    | `BREVO_API_KEY` | chave de API do Brevo (veja "E-mail pelo Brevo" abaixo) |
    | `DEFAULT_FROM_EMAIL` | remetente verificado no Brevo, ex.: `FlowMigao <seu-email@gmail.com>` |
+   | `DJANGO_ADMIN_SENHA` | senha do primeiro administrador (usuário `admin` ou o de `DJANGO_ADMIN_USUARIO`), usada só se o banco não tiver nenhum usuário |
 
    ```bash
    python -c "import secrets; print(secrets.token_urlsafe(50))"
@@ -99,7 +115,9 @@ No Railway, `DEBUG` fica desligado automaticamente e o site passa a exigir HTTPS
 
 4. Na aba **Settings → Networking**, clique em **Generate Domain** para ganhar um endereço `*.up.railway.app`.
    O domínio é liberado automaticamente no Django (`ALLOWED_HOSTS` e `CSRF_TRUSTED_ORIGINS`).
-5. Para criar o usuário do `/admin/`, use a [CLI do Railway](https://docs.railway.com/guides/cli):
+5. No primeiro deploy, o `migrate` cria o administrador inicial (veja "Usuários e login"). Se `DJANGO_ADMIN_SENHA`
+   não estiver definida, a senha gerada aparece na aba **Deploy Logs**. Para criar outros administradores pela
+   linha de comando, use a [CLI do Railway](https://docs.railway.com/guides/cli):
 
    ```bash
    railway ssh

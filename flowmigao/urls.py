@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
+from django.contrib.auth.decorators import login_not_required
 from django.db import DatabaseError, connection
 from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
@@ -24,6 +25,7 @@ from django.shortcuts import render
 def home(request):
     return render(request, 'home.html')
 
+@login_not_required
 def saude(request):
     # Usado pelo healthcheck do Railway: o deploy só entra no ar se o app responder,
     # o banco conectar e todas as tabelas estiverem criadas (nenhuma migração pendente)
@@ -44,4 +46,5 @@ urlpatterns = [
     path('clientes/', include('clientes.urls')),
     path('veiculos/', include('veiculos.urls')),
     path('manutencoes/', include('manutencoes.urls')),
+    path('', include('usuarios.urls')),
 ]
