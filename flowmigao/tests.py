@@ -170,6 +170,14 @@ class SaudeTests(TestCase):
         self.assertEqual(resposta.status_code, 503)
         self.assertEqual(resposta.json()['status'], 'erro')
 
+    def test_responde_503_com_migracoes_pendentes(self):
+        # Foi o que aconteceu no primeiro deploy: banco conectava, mas sem tabelas
+        with mock.patch('flowmigao.urls.MigrationExecutor.migration_plan', return_value=[('migracao', False)] * 3):
+            resposta = self.client.get(reverse('saude'))
+
+        self.assertEqual(resposta.status_code, 503)
+        self.assertEqual(resposta.json(), {'status': 'erro', 'migracoes_pendentes': 3})
+
 
 class AmbienteTests(SimpleTestCase):
     def test_converte_mysql_url_do_railway(self):
@@ -261,6 +269,14 @@ class ConfiguracaoProducaoTests(SimpleTestCase):
         self.assertFalse(config['SSL'])
         self.assertEqual(config['HOSTS'], ['localhost', '127.0.0.1', '[::1]'])
         self.assertEqual(config['EMAIL'], 'django.core.mail.backends.smtp.EmailBackend')
+
+    def test_railway_aplica_as_migracoes_antes_de_subir_o_site(self):
+        with open(settings.BASE_DIR / 'railway.json', encoding='utf-8') as arquivo:
+            deploy = json.load(arquivo)['deploy']
+        inicio = deploy['startCommand']
+
+        self.assertIn('python manage.py migrate --noinput && exec gunicorn', inicio)
+        self.assertEqual(deploy['healthcheckPath'], '/saude/')
 
     @skipUnless(shutil.which('sh'), 'precisa do sh, como no build do Railway')
     def test_build_do_railway_roda_sem_a_chave_secreta(self):

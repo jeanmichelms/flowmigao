@@ -5,8 +5,7 @@
     "buildCommand": "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-somente-para-o-collectstatic-do-build} python manage.py collectstatic --noinput"
   },
   "deploy": {
-    "preDeployCommand": ["python manage.py migrate --noinput"],
-    "startCommand": "gunicorn flowmigao.wsgi --workers 1 --threads 4 --access-logfile - --error-logfile -",
+    "startCommand": "sh -c 'python manage.py migrate --noinput && exec gunicorn flowmigao.wsgi --workers 1 --threads 4 --access-logfile - --error-logfile -'",
     "healthcheckPath": "/saude/",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
