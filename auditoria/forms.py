@@ -94,6 +94,8 @@ class FiltroLoginForm(FiltroPeriodoForm):
     ip = forms.GenericIPAddressField(label='IP', required=False)
 
     field_order = ['usuario', 'motivo', 'ip', 'data_inicio', 'data_fim']
+    # Ocupam duas colunas da grade de filtros, para o rótulo caber em uma linha
+    campos_largos = ['usuario']
 
     def filtrar(self, tentativas):
         dados = self.cleaned_data

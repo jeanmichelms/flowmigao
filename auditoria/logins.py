@@ -1,4 +1,6 @@
 """Registra as tentativas de login malsucedidas (tela de login do sistema e do /admin/)."""
+import ipaddress
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.signals import user_login_failed
 from django.dispatch import receiver
@@ -6,13 +8,22 @@ from django.dispatch import receiver
 from .models import TentativaLogin
 
 
+def _ip_valido(valor):
+    try:
+        return str(ipaddress.ip_address(valor.strip()))
+    except ValueError:
+        return None
+
+
 def ip_do_cliente(request):
-    # No Railway o site fica atrás de um proxy, que acrescenta o IP real no fim do X-Forwarded-For.
-    # Os valores anteriores vêm do próprio navegador e podem ser forjados, por isso vale o último.
-    encaminhado = request.META.get('HTTP_X_FORWARDED_FOR', '')
-    if encaminhado:
-        return encaminhado.split(',')[-1].strip() or None
-    return request.META.get('REMOTE_ADDR') or None
+    # No Railway o site fica atrás de proxies. O IP de quem acessou é o PRIMEIRO do X-Forwarded-For
+    # (orientação do suporte do Railway); os seguintes são os proxies internos do próprio Railway.
+    # Sem proxy (computador local), vale o endereço da conexão.
+    for valor in request.META.get('HTTP_X_FORWARDED_FOR', '').split(','):
+        ip = _ip_valido(valor)
+        if ip:
+            return ip
+    return _ip_valido(request.META.get('HTTP_X_REAL_IP', '')) or _ip_valido(request.META.get('REMOTE_ADDR', ''))
 
 
 def _motivo_e_usuario(usuario_informado):

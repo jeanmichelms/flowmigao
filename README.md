@@ -66,7 +66,7 @@ também para o `/admin/`.
 - **Logins malsucedidos** (aba na tela Auditoria): cada tentativa que falha, na tela de login do sistema ou do
   `/admin/`, grava a data/hora, o usuário digitado, o motivo (senha incorreta, usuário não cadastrado ou
   desativado), o IP e o navegador. A senha digitada nunca é gravada. No Railway, o IP vem do cabeçalho
-  `X-Forwarded-For` (o último endereço, que é o acrescentado pelo proxy).
+  `X-Forwarded-For`: vale o primeiro endereço, que é o de quem acessou (os seguintes são proxies internos do Railway).
 
 ## Testes
 

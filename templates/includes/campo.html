@@ -2,8 +2,9 @@
 Campo de formulário acessível. Uso: {% include 'includes/campo.html' with campo=form.nome %}
 O Django já marca o widget com aria-invalid e aria-describedby="<id>_error" / "<id>_helptext";
 aqui criamos os elementos com esses ids para que a ligação funcione.
+Opcional: classe="..." acrescenta uma classe CSS ao grupo do campo.
 {% endcomment %}
-<div class="form-group">
+<div class="form-group{% if classe %} {{ classe }}{% endif %}">
     <label for="{{ campo.id_for_label }}">{{ campo.label }}{% if campo.field.required %} <span class="obrigatorio" aria-hidden="true">*</span>{% endif %}</label>
     {{ campo }}
     {% if campo.help_text %}<div class="ajuda" id="{{ campo.auto_id }}_helptext">{{ campo.help_text }}</div>{% endif %}
