@@ -23,13 +23,16 @@ def enviar_avisos_revisao(data_base=None):
     from .models import Manutencao
 
     data_base = data_base or timezone.localdate()
-    data_alvo = data_base + timedelta(days=_dias_antecedencia())
+    data_limite = data_base + timedelta(days=_dias_antecedencia())
     resultado = ResultadoEnvioAvisos()
 
+    # Todas as revisões de hoje até o limite que ainda não foram avisadas (e não só as do dia exato):
+    # assim uma revisão cadastrada em cima da hora, ou um dia com o site fora do ar, não fica sem aviso.
+    # Cada manutenção é avisada uma vez só; ao mudar a data da revisão, o aviso volta a valer (Manutencao.save).
     manutencoes_ids = list(
         Manutencao.objects
         .filter(
-            data_proxima_manutencao=data_alvo,
+            data_proxima_manutencao__range=(data_base, data_limite),
             email_aviso_revisao_enviado=False,
         )
         .values_list('id', flat=True)
@@ -46,9 +49,11 @@ def enviar_avisos_revisao(data_base=None):
                     .get(pk=manutencao_id)
                 )
 
+                # Confere de novo com o registro travado: pode ter mudado desde a busca acima
                 if (
                     manutencao.email_aviso_revisao_enviado
-                    or manutencao.data_proxima_manutencao != data_alvo
+                    or manutencao.data_proxima_manutencao is None
+                    or not data_base <= manutencao.data_proxima_manutencao <= data_limite
                 ):
                     continue
 
