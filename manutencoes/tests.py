@@ -68,7 +68,7 @@ class AvisoRevisaoEmailTests(TestCase):
         self.assertEqual(resultado.enviados, 0)
         self.assertEqual(len(mail.outbox), 0)
 
-    def test_nao_envia_email_fora_da_data_alvo(self):
+    def test_nao_envia_email_depois_do_prazo_de_antecedencia(self):
         data_base = date(2026, 5, 10)
         self._criar_manutencao(data_base + timedelta(days=4))
 
@@ -77,6 +77,69 @@ class AvisoRevisaoEmailTests(TestCase):
         self.assertEqual(resultado.encontrados, 0)
         self.assertEqual(resultado.enviados, 0)
         self.assertEqual(len(mail.outbox), 0)
+
+    def test_envia_para_todas_as_revisoes_dentro_do_prazo(self):
+        # Ex.: revisão cadastrada em cima da hora, ou dia em que o site ficou fora do ar
+        data_base = date(2026, 5, 10)
+        for dias in (0, 1, 2, 3):
+            self._criar_manutencao(data_base + timedelta(days=dias))
+
+        resultado = enviar_avisos_revisao(data_base=data_base)
+
+        self.assertEqual((resultado.encontrados, resultado.enviados), (4, 4))
+        self.assertEqual(len(mail.outbox), 4)
+        self.assertFalse(Manutencao.objects.filter(email_aviso_revisao_enviado=False).exists())
+
+    def test_nao_envia_para_revisao_que_ja_passou_ou_sem_data(self):
+        data_base = date(2026, 5, 10)
+        self._criar_manutencao(data_base - timedelta(days=1))
+        self._criar_manutencao(None)
+
+        resultado = enviar_avisos_revisao(data_base=data_base)
+
+        self.assertEqual(resultado.encontrados, 0)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_cada_revisao_e_avisada_uma_vez_so(self):
+        data_base = date(2026, 5, 10)
+        self._criar_manutencao(data_base + timedelta(days=2))
+
+        enviar_avisos_revisao(data_base=data_base)
+        segunda = enviar_avisos_revisao(data_base=data_base + timedelta(days=1))
+
+        self.assertEqual(segunda.encontrados, 0)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_nova_data_de_revisao_recebe_novo_aviso(self):
+        data_base = date(2026, 5, 10)
+        manutencao = self._criar_manutencao(data_base + timedelta(days=2))
+        enviar_avisos_revisao(data_base=data_base)
+
+        manutencao.refresh_from_db()
+        manutencao.data_proxima_manutencao = data_base + timedelta(days=3)
+        manutencao.save()
+        resultado = enviar_avisos_revisao(data_base=data_base)
+
+        self.assertEqual(resultado.enviados, 1)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertIn('13/05/2026', mail.outbox[1].body)
+
+    def test_alterar_data_pela_tela_de_edicao_reseta_indicador_de_envio(self):
+        entrar(self.client)
+        manutencao = self._criar_manutencao(date(2026, 5, 13), email_aviso_revisao_enviado=True)
+        dados = {
+            'veiculo': self.veiculo.pk, 'tipo': 'PREVENTIVA', 'descricao': 'Revisão preventiva',
+            'data_manutencao': '2026-01-10', 'quilometragem': 10000, 'valor': '250.00', 'observacoes': '',
+        }
+
+        # Salvar sem mudar a data mantém o indicador; mudar a data libera um novo aviso
+        self.client.post(reverse('manutencoes_editar', args=[manutencao.pk]), {**dados, 'data_proxima_manutencao': '2026-05-13'})
+        manutencao.refresh_from_db()
+        self.assertTrue(manutencao.email_aviso_revisao_enviado)
+
+        self.client.post(reverse('manutencoes_editar', args=[manutencao.pk]), {**dados, 'data_proxima_manutencao': '2026-06-13'})
+        manutencao.refresh_from_db()
+        self.assertFalse(manutencao.email_aviso_revisao_enviado)
 
     def test_alterar_data_proxima_manutencao_reseta_indicador_de_envio(self):
         manutencao = self._criar_manutencao(

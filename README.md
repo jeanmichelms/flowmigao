@@ -169,3 +169,15 @@ por dia). SMTP não funciona no Railway: ele bloqueia essas conexões nos planos
 
 Sem domínio próprio, os e-mails podem cair na caixa de spam. Localmente, sem `BREVO_API_KEY`, o sistema usa SMTP
 (variáveis `EMAIL_*` do `.env`).
+
+### Quando o aviso de revisão é enviado
+
+Todo dia no horário de `AVISO_REVISAO_EMAIL_HORARIO_ENVIO` (padrão `08:00`, horário de Brasília), o site avisa
+por e-mail **todas as revisões de hoje até os próximos `AVISO_REVISAO_EMAIL_DIAS_ANTECEDENCIA` dias** (padrão 7)
+que ainda não foram avisadas. Assim, uma revisão cadastrada em cima da hora ou um dia com o site fora do ar
+não ficam sem aviso.
+
+- Cada manutenção recebe o aviso uma vez só.
+- Se a data da próxima revisão for alterada, o aviso volta a valer e é enviado de novo para a nova data.
+- Revisões com data já passada não recebem aviso.
+- Se o site for reiniciado (deploy) depois do horário de envio, a verificação roda na hora em que ele sobe.
