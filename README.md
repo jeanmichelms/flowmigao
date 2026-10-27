@@ -83,6 +83,8 @@ e custo com peças), um gráfico das manutenções preventivas e corretivas dos 
   atual de cada peça.
 - **Tela:** gráfico de colunas empilhadas (as 5 peças com maior quantidade e as demais somadas em "Outras
   peças") e tabela com todas as peças, mês a mês, total, custo estimado e a base do cálculo de cada mês.
+- **Paginação:** a tabela da projeção e a do histórico de manutenções são paginadas só na tela (10, 25, 50 ou
+  100 itens por página, padrão 10), cada uma de forma independente. Os gráficos, os totais e o PDF usam todos os dados.
 - **Relatório PDF:** o botão **Baixar relatório PDF** gera o mesmo conteúdo (resumo, gráfico e tabela) em A4
   paisagem, com a biblioteca [ReportLab](https://www.reportlab.com/).
 
@@ -94,7 +96,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 |---|---|
 | `clientes` | validação do formulário (CPF/e-mail únicos, e-mail inválido), cadastro, edição, detalhe e exclusão |
 | `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
-| `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, projeção de peças (média do mesmo mês, média geral, período de até 12 meses) e relatório PDF, busca de veículos e aviso de revisão por e-mail |
+| `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, projeção de peças (média do mesmo mês, média geral, período de até 12 meses), paginação das tabelas e relatório PDF, busca de veículos e aviso de revisão por e-mail |
 | `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
 | `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe, transação por requisição, logins malsucedidos (motivo, IP, senha nunca gravada, tela e filtros) |
 | `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |

@@ -34,6 +34,7 @@
 
     <form method="get" action="{% url 'dashboard' %}#projecao" class="form-projecao" aria-labelledby="titulo-periodo">
         <h3 id="titulo-periodo" class="visually-hidden">Período da projeção</h3>
+        {% for nome, valor in ocultos_projecao %}<input type="hidden" name="{{ nome }}" value="{{ valor }}">{% endfor %}
         {% include 'includes/resumo_erros.html' with form=form_projecao %}
         <div class="form-projecao-campos">
             {% include 'includes/campo.html' with campo=form_projecao.inicio %}
@@ -95,7 +96,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for linha in projecao.linhas %}
+                {% for linha in tabela_projecao.pagina %}
                 <tr>
                     <th scope="row">{{ linha.peca }}</th>
                     {% for quantidade in linha.quantidades %}
@@ -108,7 +109,7 @@
             </tbody>
             <tfoot>
                 <tr class="linha-total">
-                    <th scope="row">Total por mês</th>
+                    <th scope="row">Total por mês{% if tabela_projecao.pagina.has_other_pages %} <span class="nota-total">(todas as peças)</span>{% endif %}</th>
                     {% for mes in projecao.meses %}
                     <td class="numero">{{ mes.total }}</td>
                     {% endfor %}
@@ -126,6 +127,7 @@
             </tfoot>
         </table>
     </div>
+    {% include 'manutencoes/paginacao_tabela.html' with tabela=tabela_projecao rotulo='peças' %}
     <p class="ajuda">
         <strong>Como é calculado:</strong> a quantidade de cada peça em um mês é a média do que foi usado no mesmo mês
         dos anos anteriores ("Base do cálculo" mostra quantos anos entraram na média), arredondada para o inteiro mais próximo.
@@ -164,7 +166,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for linha in historico_servicos %}
+                {% for linha in tabela_historico.pagina %}
                 <tr>
                     <th scope="row">{{ linha.mes|date:"F / Y" }}</th>
                     <td class="numero"><strong>{{ linha.total_servicos }}</strong></td>
@@ -179,6 +181,7 @@
             </tbody>
         </table>
     </div>
+    {% include 'manutencoes/paginacao_tabela.html' with tabela=tabela_historico rotulo='meses' %}
 </section>
 
 <style>
@@ -377,6 +380,47 @@
         filter: brightness(0.92);
     }
 
+    /* Paginação das tabelas: itens por página à esquerda, páginas à direita */
+    .paginacao-tabela {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 24px;
+        margin: -4px 0 16px;
+    }
+    .por-pagina {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    .por-pagina label {
+        display: inline;
+        margin: 0;
+    }
+    .por-pagina select {
+        width: auto;
+        padding: 6px 10px;
+    }
+    .paginacao-tabela .btn {
+        margin: 0;
+        padding: 6px 12px;
+    }
+    .paginacao-resumo {
+        margin: 0;
+        color: #4b5563;
+        font-variant-numeric: tabular-nums;
+    }
+    .paginacao-tabela .paginacao {
+        margin-left: auto;
+    }
+    .nota-total {
+        font-weight: normal;
+        font-size: 0.85rem;
+        color: #4b5563;
+    }
+
     /* Tabelas numéricas */
     .tabela-numeros .numero {
         text-align: right;
@@ -406,6 +450,21 @@
         .form-projecao-campos {
             grid-template-columns: 1fr;
         }
+        /* Paginação no celular: rótulo em cima do select + Aplicar; "Página x de y" em cima dos botões */
+        .paginacao-tabela {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .por-pagina label {
+            flex-basis: 100%;
+        }
+        .paginacao-tabela .paginacao {
+            margin-left: 0;
+        }
+        .paginacao-tabela .paginacao span {
+            flex-basis: 100%;
+            order: -1;
+        }
         .painel-secao {
             padding: 14px;
         }
@@ -421,6 +480,8 @@
         color: #fff !important;
         border-color: #fff !important;
     }
+    html.alto-contraste .paginacao-resumo,
+    html.alto-contraste .nota-total,
     html.alto-contraste .painel-subtitulo,
     html.alto-contraste .card-titulo,
     html.alto-contraste .card-valor,

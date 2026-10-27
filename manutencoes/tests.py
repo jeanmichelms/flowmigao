@@ -623,6 +623,111 @@ class ProjecaoPecasTelaTests(TestCase):
                              fetch_redirect_response=False)
 
 
+@mock.patch('manutencoes.views.timezone.localdate', return_value=HOJE_PROJECAO)
+class PaginacaoTabelasPainelTests(TestCase):
+    """As tabelas do painel paginam só na tela, cada uma com seus próprios parâmetros."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
+        veiculo = Veiculo.objects.create(cliente=cliente, marca='Fiat', modelo='Uno', ano=2020, placa='XYZ9A87')
+        # 13 meses de histórico (out/2025 a out/2026) e 12 peças usadas em novembro/2025
+        for i in range(13):
+            Manutencao.objects.create(
+                veiculo=veiculo, descricao='Serviço', data_manutencao=add_months(date(2025, 10, 5), i),
+                quilometragem=10000, valor='100.00',
+            )
+        novembro = Manutencao.objects.get(data_manutencao=date(2025, 11, 5))
+        for i in range(12):
+            peca = Peca.objects.create(nome=f'Peça {i:02d}', preco_custo=Decimal('10.00'))
+            PecaUsada.objects.create(manutencao=novembro, peca=peca, quantidade=1)
+
+    def setUp(self):
+        entrar(self.client)
+
+    def test_padrao_dez_itens_por_pagina(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'))
+
+        self.assertEqual(len(resposta.context['tabela_historico']['pagina']), 10)
+        self.assertEqual(len(resposta.context['tabela_projecao']['pagina']), 10)
+        self.assertContains(resposta, '1–10 de 13 meses')
+        self.assertContains(resposta, '1–10 de 12 peças')
+        self.assertContains(resposta, 'aria-label="Páginas da tabela de meses"')
+        # Totais da projeção continuam somando todas as peças, não só as da página
+        self.assertEqual(resposta.context['projecao'].total_pecas, 12)
+        self.assertContains(resposta, '(todas as peças)')
+
+    def test_escolher_itens_por_pagina(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'), {'por_pagina_historico': '25'})
+
+        self.assertEqual(len(resposta.context['tabela_historico']['pagina']), 13)
+        self.assertNotContains(resposta, 'aria-label="Páginas da tabela de meses"')
+        self.assertContains(resposta, '<option value="25" selected>25</option>', html=True)
+        # A outra tabela não muda
+        self.assertEqual(len(resposta.context['tabela_projecao']['pagina']), 10)
+
+    def test_quantidade_fora_das_opcoes_usa_o_padrao(self, _hoje):
+        for valor in ('7', 'abc', '1000'):
+            with self.subTest(valor=valor):
+                resposta = self.client.get(reverse('dashboard'), {'por_pagina_historico': valor})
+                self.assertEqual(resposta.context['tabela_historico']['por_pagina'], 10)
+
+    def test_paginas_independentes_e_links_mantem_a_tela(self, _hoje):
+        resposta = self.client.get(
+            reverse('dashboard'), {'inicio': '2026-11', 'meses': '3', 'pagina_historico': '2'}
+        )
+
+        historico = resposta.context['tabela_historico']
+        self.assertEqual(historico['pagina'].number, 2)
+        self.assertEqual(len(historico['pagina']), 3)
+        self.assertEqual(resposta.context['tabela_projecao']['pagina'].number, 1)
+        self.assertEqual(historico['url_anterior'], '?inicio=2026-11&meses=3&pagina_historico=1#titulo-tabela-historico')
+        self.assertEqual(
+            resposta.context['tabela_projecao']['url_proxima'],
+            '?inicio=2026-11&meses=3&pagina_historico=2&pagina_pecas=2#titulo-tabela-projecao',
+        )
+
+    def test_pagina_inexistente_mostra_a_ultima(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'), {'pagina_pecas': '99'})
+
+        self.assertEqual(resposta.context['tabela_projecao']['pagina'].number, 2)
+
+    def test_formularios_mantem_os_parametros_da_outra_tabela(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'), {
+            'inicio': '2026-11', 'meses': '3', 'pagina_pecas': '2', 'pagina_historico': '2',
+            'por_pagina_historico': '10',
+        })
+
+        # Trocar o período mantém a paginação do histórico e volta a tabela de peças para a página 1
+        self.assertEqual(
+            resposta.context['ocultos_projecao'], [('pagina_historico', '2'), ('por_pagina_historico', '10')]
+        )
+        # Trocar a quantidade do histórico mantém período e página das peças
+        self.assertEqual(
+            resposta.context['tabela_historico']['ocultos'],
+            [('inicio', '2026-11'), ('meses', '3'), ('pagina_pecas', '2')],
+        )
+
+    def test_tabela_pequena_nao_mostra_paginacao(self, _hoje):
+        PecaUsada.objects.exclude(peca__nome='Peça 00').delete()
+
+        resposta = self.client.get(reverse('dashboard'))
+
+        self.assertNotContains(resposta, 'id="id_por_pagina_pecas"')
+        self.assertContains(resposta, 'id="id_por_pagina_historico"')
+
+    def test_relatorio_pdf_ignora_a_paginacao(self, _hoje):
+        with mock.patch('manutencoes.views.gerar_pdf_projecao', return_value=b'%PDF') as gerar:
+            resposta = self.client.get(
+                reverse('dashboard_projecao_pdf'),
+                {'inicio': '2026-11', 'meses': '1', 'pagina_pecas': '2', 'por_pagina_pecas': '10'},
+            )
+
+        self.assertEqual(resposta.status_code, 200)
+        projecao = gerar.call_args.args[0]
+        self.assertEqual(len(projecao.linhas), 12)
+
+
 @override_settings(
     AVISO_REVISAO_EMAIL_DIAS_ANTECEDENCIA=3,
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
