@@ -259,7 +259,21 @@
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+        /* Mesma margem de baixo dos campos (.form-group), para os botões ficarem na linha dos selects */
         margin-bottom: 16px;
+    }
+    /* Campos e botões com a mesma altura (em rem, acompanha o aumento de fonte) */
+    .form-projecao select,
+    .form-projecao-acoes .btn {
+        height: 2.75rem;
+    }
+    .form-projecao-acoes .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        padding-top: 0;
+        padding-bottom: 0;
     }
     .btn-pdf {
         background: #b91c1c;
