@@ -2,6 +2,7 @@ from calendar import monthrange
 from datetime import date
 
 from django import forms
+from django.utils import dateformat
 from .models import Manutencao  
 from .models import Peca, PecaUsada
 
@@ -91,3 +92,31 @@ class ManutencaoForm(forms.ModelForm):
             hoje = date.today()
             self.initial.setdefault('data_manutencao', hoje.strftime(HTML5_DATE_FORMAT))
             self.initial.setdefault('data_proxima_manutencao', add_months(hoje, 6).strftime(HTML5_DATE_FORMAT))
+
+
+MESES_PROJECAO_MAXIMO = 12
+
+
+class ProjecaoPecasForm(forms.Form):
+    """Período futuro da projeção de peças: mês inicial e quantidade de meses (até 1 ano)."""
+    inicio = forms.ChoiceField(label='A partir de')
+    meses = forms.TypedChoiceField(
+        label='Período',
+        coerce=int,
+        choices=[(n, f'{n} {"mês" if n == 1 else "meses"}') for n in range(1, MESES_PROJECAO_MAXIMO + 1)],
+    )
+
+    def __init__(self, *args, hoje, **kwargs):
+        super().__init__(*args, **kwargs)
+        mes_atual = hoje.replace(day=1)
+        # Do mês atual até um ano à frente
+        opcoes = [add_months(mes_atual, i) for i in range(MESES_PROJECAO_MAXIMO + 1)]
+        self.fields['inicio'].choices = [
+            (mes.strftime('%Y-%m'), dateformat.format(mes, r'F \d\e Y')) for mes in opcoes
+        ]
+        self.initial.setdefault('inicio', add_months(mes_atual, 1).strftime('%Y-%m'))
+        self.initial.setdefault('meses', 6)
+
+    def clean_inicio(self):
+        ano, mes = self.cleaned_data['inicio'].split('-')
+        return date(int(ano), int(mes), 1)

@@ -68,6 +68,24 @@ também para o `/admin/`.
   desativado), o IP e o navegador. A senha digitada nunca é gravada. No Railway, o IP vem do cabeçalho
   `X-Forwarded-For`: vale o primeiro endereço, que é o de quem acessou (os seguintes são proxies internos do Railway).
 
+## Painel gerencial
+
+O **Painel Gerencial** (`/manutencoes/dashboard/`) mostra os indicadores do mês (novos clientes, manutenções
+e custo com peças), um gráfico das manutenções preventivas e corretivas dos últimos 12 meses e a
+**projeção de peças necessárias**.
+
+- **Período:** escolha o mês inicial (do mês atual até um ano à frente) e a duração, de 1 a 12 meses.
+  Sem escolha, a projeção começa no próximo mês e cobre 6 meses.
+- **Cálculo:** a quantidade de cada peça em um mês é a média do que foi usado no **mesmo mês dos anos
+  anteriores** (março/2027 usa março/2026, março/2025...), arredondada para o inteiro mais próximo. Só entram
+  meses já encerrados e a partir do primeiro mês com peça registrada. Um mês que ainda não tem ano anterior
+  no histórico usa a média mensal de todo o histórico ("Média geral"). O custo estimado usa o preço de custo
+  atual de cada peça.
+- **Tela:** gráfico de colunas empilhadas (as 5 peças com maior quantidade e as demais somadas em "Outras
+  peças") e tabela com todas as peças, mês a mês, total, custo estimado e a base do cálculo de cada mês.
+- **Relatório PDF:** o botão **Baixar relatório PDF** gera o mesmo conteúdo (resumo, gráfico e tabela) em A4
+  paisagem, com a biblioteca [ReportLab](https://www.reportlab.com/).
+
 ## Testes
 
 Os testes automatizados usam o framework de testes do Django e cobrem:
@@ -76,7 +94,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 |---|---|
 | `clientes` | validação do formulário (CPF/e-mail únicos, e-mail inválido), cadastro, edição, detalhe e exclusão |
 | `veiculos` | cadastro (inclusive a partir do cliente), placa repetida, marca/modelo da FIPE preservados, busca de clientes do modal |
-| `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, busca de veículos e aviso de revisão por e-mail |
+| `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, projeção de peças (média do mesmo mês, média geral, período de até 12 meses) e relatório PDF, busca de veículos e aviso de revisão por e-mail |
 | `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
 | `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe, transação por requisição, logins malsucedidos (motivo, IP, senha nunca gravada, tela e filtros) |
 | `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
