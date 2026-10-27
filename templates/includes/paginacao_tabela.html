@@ -1,13 +1,13 @@
 {% comment %}
-Paginação de uma tabela do painel (montada por _paginar_tabela na view).
-Uso: {% include 'manutencoes/paginacao_tabela.html' with tabela=... rotulo='peças' %}
+Paginação de uma tabela (montada por flowmigao.paginacao.paginar_tabela).
+Uso: {% include 'includes/paginacao_tabela.html' with tabela=... rotulo='peças' %}
 O seletor de itens por página é um formulário GET com botão (sem trocar de página sozinho ao escolher),
 que mantém os demais parâmetros da tela em campos ocultos.
 {% endcomment %}
 {% with pagina=tabela.pagina %}
 {% if pagina.paginator.count > tabela.opcoes.0 %}
 <div class="paginacao-tabela">
-    <form method="get" action="#{{ tabela.ancora }}" class="por-pagina">
+    <form method="get"{% if tabela.ancora %} action="#{{ tabela.ancora }}"{% endif %} class="por-pagina">
         {% for nome, valor in tabela.ocultos %}<input type="hidden" name="{{ nome }}" value="{{ valor }}">{% endfor %}
         <label for="id_{{ tabela.param_por_pagina }}">Itens por página</label>
         <select name="{{ tabela.param_por_pagina }}" id="id_{{ tabela.param_por_pagina }}">

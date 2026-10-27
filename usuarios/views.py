@@ -7,6 +7,8 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, ListView, UpdateView
 
+from flowmigao.paginacao import ListaComBuscaMixin
+
 from .forms import AlterarSenhaForm, LoginForm, UsuarioCriarForm, UsuarioEditarForm
 from .regras import eh_administrador, motivo_para_nao_excluir
 
@@ -33,11 +35,14 @@ class SomenteAdministradorMixin(UserPassesTestMixin):
         return eh_administrador(self.request.user)
 
 
-class UsuarioListView(SomenteAdministradorMixin, ListView):
+class UsuarioListView(SomenteAdministradorMixin, ListaComBuscaMixin, ListView):
     model = User
     template_name = 'usuarios/lista.html'
     context_object_name = 'usuarios'
     ordering = ['username']
+    campos_busca = ['username', 'first_name', 'last_name', 'email']
+    rotulo_itens = 'usuários'
+    ajuda_busca = 'Usuário, nome ou e-mail.'
 
 
 class UsuarioCreateView(SomenteAdministradorMixin, SuccessMessageMixin, CreateView):

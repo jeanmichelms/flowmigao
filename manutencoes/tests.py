@@ -370,6 +370,23 @@ class VeiculoBuscaViewTests(TestCase):
         self.assertEqual(resultado['cliente_cpf'], '111.222.333-44')
         self.assertEqual(resultado['ano'], 2015)
 
+    def test_informa_o_total_para_o_modal_avisar_do_limite(self):
+        dados = self.client.get(reverse('manutencoes_buscar_veiculos'), {'q': 'fiat'}).json()
+        self.assertEqual((len(dados['results']), dados['total'], dados['limite']), (1, 1, 50))
+
+        cliente = Cliente.objects.get(nome='Ana')
+        for i in range(50):
+            Veiculo.objects.create(cliente=cliente, marca='Fiat', modelo='Palio', ano=2010, placa=f'PAL{i:04d}')
+
+        dados = self.client.get(reverse('manutencoes_buscar_veiculos'), {'q': 'fiat'}).json()
+        # Só os 50 primeiros vêm na resposta, mas o total mostra que há mais
+        self.assertEqual((len(dados['results']), dados['total']), (50, 51))
+
+    def test_modal_tem_aviso_de_limite(self):
+        resposta = self.client.get(reverse('manutencoes_novo'))
+
+        self.assertContains(resposta, '<p class="aviso-limite" id="aviso-limite-veiculos" hidden></p>', html=True)
+
 
 class PainelGerencialTests(TestCase):
     def setUp(self):

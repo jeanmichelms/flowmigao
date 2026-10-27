@@ -166,6 +166,32 @@ class ManutencaoUsuariosTests(TestCase):
         self.assertContains(resposta, '<caption')
         self.assertContains(resposta, 'Excluir<span class="visually-hidden"> usuário joao</span>')
 
+    def test_busca_de_usuarios_por_usuario_nome_e_email(self):
+        User.objects.create_user('ana', email='ana@example.com', first_name='Ana', last_name='Souza')
+
+        for termo in ('ana', 'souza', 'ana@example'):
+            with self.subTest(termo=termo):
+                resposta = self.client.get(reverse('usuarios_lista'), {'q': termo})
+                self.assertEqual([u.username for u in resposta.context['usuarios']], ['ana'])
+
+        resposta = self.client.get(reverse('usuarios_lista'), {'q': 'inexistente'})
+        self.assertContains(resposta, 'Nenhum usuário encontrado.')
+
+    def test_lista_de_usuarios_paginada(self):
+        for i in range(12):
+            User.objects.create_user(f'usuario{i:02d}')
+
+        total = User.objects.count()  # os 12 acima + os do setUp (e o administrador inicial da migração)
+
+        resposta = self.client.get(reverse('usuarios_lista'))
+
+        self.assertEqual(len(resposta.context['usuarios']), 10)
+        self.assertContains(resposta, f'1–10 de {total} usuários')
+        self.assertContains(resposta, 'href="?pagina=2"')
+
+        resposta = self.client.get(reverse('usuarios_lista'), {'por_pagina': '25'})
+        self.assertEqual(len(resposta.context['usuarios']), total)
+
     def test_lista_nao_oferece_excluir_o_proprio_usuario(self):
         resposta = self.client.get(reverse('usuarios_lista'))
 

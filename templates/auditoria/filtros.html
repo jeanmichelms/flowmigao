@@ -12,6 +12,7 @@
         {% endfor %}
     </div>
     {% for campo in filtro.hidden_fields %}{{ campo }}{% endfor %}
+    {% if tabela.por_pagina != tabela.opcoes.0 %}<input type="hidden" name="{{ tabela.param_por_pagina }}" value="{{ tabela.por_pagina }}">{% endif %}
     <button class="btn" type="submit">Filtrar</button>
     {% if filtrando %}<a class="btn btn-secondary" href="{{ limpar_url }}">Limpar filtros</a>{% endif %}
 </form>
