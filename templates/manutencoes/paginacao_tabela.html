@@ -1,0 +1,34 @@
+{% comment %}
+Paginação de uma tabela do painel (montada por _paginar_tabela na view).
+Uso: {% include 'manutencoes/paginacao_tabela.html' with tabela=... rotulo='peças' %}
+O seletor de itens por página é um formulário GET com botão (sem trocar de página sozinho ao escolher),
+que mantém os demais parâmetros da tela em campos ocultos.
+{% endcomment %}
+{% with pagina=tabela.pagina %}
+{% if pagina.paginator.count > tabela.opcoes.0 %}
+<div class="paginacao-tabela">
+    <form method="get" action="#{{ tabela.ancora }}" class="por-pagina">
+        {% for nome, valor in tabela.ocultos %}<input type="hidden" name="{{ nome }}" value="{{ valor }}">{% endfor %}
+        <label for="id_{{ tabela.param_por_pagina }}">Itens por página</label>
+        <select name="{{ tabela.param_por_pagina }}" id="id_{{ tabela.param_por_pagina }}">
+            {% for opcao in tabela.opcoes %}
+            <option value="{{ opcao }}"{% if opcao == tabela.por_pagina %} selected{% endif %}>{{ opcao }}</option>
+            {% endfor %}
+        </select>
+        <button class="btn btn-secondary" type="submit">Aplicar<span class="visually-hidden"> itens por página da tabela de {{ rotulo }}</span></button>
+    </form>
+
+    <p class="paginacao-resumo" role="status">
+        {{ pagina.start_index }}–{{ pagina.end_index }} de {{ pagina.paginator.count }} {{ rotulo }}
+    </p>
+
+    {% if pagina.has_other_pages %}
+    <nav class="paginacao" aria-label="Páginas da tabela de {{ rotulo }}">
+        {% if tabela.url_anterior %}<a class="btn btn-secondary" href="{{ tabela.url_anterior }}">Anterior<span class="visually-hidden"> ({{ rotulo }})</span></a>{% endif %}
+        <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if tabela.url_proxima %}<a class="btn btn-secondary" href="{{ tabela.url_proxima }}">Próxima<span class="visually-hidden"> ({{ rotulo }})</span></a>{% endif %}
+    </nav>
+    {% endif %}
+</div>
+{% endif %}
+{% endwith %}

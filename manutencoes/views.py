@@ -3,6 +3,7 @@ from urllib.parse import urlencode
 
 from django.db.models import ProtectedError, Q, Count, Sum
 from django.db.models.functions import TruncMonth
+from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -232,6 +233,39 @@ class VeiculoBuscaView(View):
 
 
 MESES_HISTORICO_GRAFICO = 12
+# Itens por página que o usuário pode escolher nas tabelas do painel (o primeiro é o padrão)
+OPCOES_POR_PAGINA = [10, 25, 50, 100]
+
+
+def _paginar_tabela(request, itens, prefixo, ancora):
+    """Paginação de uma tabela do painel, com parâmetros próprios (`pagina_<prefixo>` e
+    `por_pagina_<prefixo>`) para que as tabelas da mesma tela paginem de forma independente."""
+    param_pagina, param_por_pagina = f'pagina_{prefixo}', f'por_pagina_{prefixo}'
+    por_pagina = request.GET.get(param_por_pagina, '')
+    por_pagina = int(por_pagina) if por_pagina.isdigit() and int(por_pagina) in OPCOES_POR_PAGINA else OPCOES_POR_PAGINA[0]
+    pagina = Paginator(itens, por_pagina).get_page(request.GET.get(param_pagina))
+
+    def url_da_pagina(numero):
+        parametros = request.GET.copy()
+        parametros[param_pagina] = numero
+        return f'?{parametros.urlencode()}#{ancora}'
+
+    return {
+        'pagina': pagina,
+        'prefixo': prefixo,
+        'ancora': ancora,
+        'param_por_pagina': param_por_pagina,
+        'por_pagina': por_pagina,
+        'opcoes': OPCOES_POR_PAGINA,
+        'url_anterior': url_da_pagina(pagina.previous_page_number()) if pagina.has_previous() else None,
+        'url_proxima': url_da_pagina(pagina.next_page_number()) if pagina.has_next() else None,
+        # Ao trocar a quantidade por página, mantém o resto da tela e volta para a primeira página desta tabela
+        'ocultos': _parametros_exceto(request, param_pagina, param_por_pagina),
+    }
+
+
+def _parametros_exceto(request, *nomes):
+    return [(nome, valor) for nome, valores in request.GET.lists() if nome not in nomes for valor in valores]
 
 
 def _form_projecao(request, hoje):
@@ -289,11 +323,14 @@ def dashboard_gerencial(request):
     form_projecao = _form_projecao(request, hoje)
     projecao = None
     grafico_projecao = None
+    tabela_projecao = None
     if form_projecao.is_valid():
         projecao = projetar_pecas(form_projecao.cleaned_data['inicio'], form_projecao.cleaned_data['meses'], hoje)
         grafico_projecao = colunas_empilhadas(
             [mes.rotulo_curto for mes in projecao.meses], projecao.series_grafico()
         )
+        # Só a tabela é paginada: gráfico, totais e PDF usam todas as peças
+        tabela_projecao = _paginar_tabela(request, projecao.linhas, 'pecas', 'titulo-tabela-projecao')
 
     context = {
         'clientes_mes': clientes_mes,
@@ -303,10 +340,14 @@ def dashboard_gerencial(request):
         ).count(),
         'historico_servicos': historico_servicos,
         'grafico_historico': _grafico_historico(historico_servicos, hoje),
+        'tabela_historico': _paginar_tabela(request, historico_servicos, 'historico', 'titulo-tabela-historico'),
         'gasto_pecas_mes': gasto_pecas_mes,
         'form_projecao': form_projecao,
         'projecao': projecao,
         'grafico_projecao': grafico_projecao,
+        'tabela_projecao': tabela_projecao,
+        # Um período novo volta a tabela de peças para a primeira página; o resto da tela é mantido
+        'ocultos_projecao': _parametros_exceto(request, 'inicio', 'meses', 'pagina_pecas'),
         'mes_atual': hoje,
         # Mesmo período no link do PDF, inclusive quando a tela abriu com o período padrão
         'query_projecao': urlencode({
