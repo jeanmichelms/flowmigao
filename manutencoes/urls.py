@@ -22,6 +22,7 @@ urlpatterns = [
     path('<int:pk>/editar/', ManutencaoUpdateView.as_view(), name='manutencoes_editar'),
     path('<int:pk>/excluir/', ManutencaoDeleteView.as_view(), name='manutencoes_excluir'),
     path('dashboard/', views.dashboard_gerencial, name='dashboard'),
+    path('dashboard/projecao-pecas.pdf', views.projecao_pecas_pdf, name='dashboard_projecao_pdf'),
     path('pecas-usadas/<int:pk>/remover/', PecaUsadaRemoverView.as_view(), name='pecas_usadas_remover'),
     path('pecas/', PecaListView.as_view(), name='pecas_lista'),
     path('pecas/nova/', PecaCreateView.as_view(), name='pecas_nova'),

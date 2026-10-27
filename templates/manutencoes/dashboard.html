@@ -3,7 +3,10 @@
 {% block title %}Painel Gerencial{% endblock %}
 
 {% block content %}
-<h1>Painel Gerencial</h1>
+<div class="painel-topo">
+    <h1>Painel Gerencial</h1>
+    <p class="painel-subtitulo">Resumo de {{ mes_atual|date:"F \d\e Y" }}</p>
+</div>
 
 <!-- Cartões de Resumo -->
 <h2 class="visually-hidden">Resumo do mês</h2>
@@ -12,74 +15,417 @@
         <dt class="card-titulo">Novos Clientes (Mês)</dt>
         <dd class="card-valor">{{ clientes_mes }}</dd>
     </div>
+    <div class="card-resumo card-laranja">
+        <dt class="card-titulo">Manutenções (Mês)</dt>
+        <dd class="card-valor">{{ servicos_mes }}</dd>
+    </div>
     <div class="card-resumo card-verde">
         <dt class="card-titulo">Custo com Peças (Mês)</dt>
-        <dd class="card-valor">R$ {{ gasto_pecas_mes|floatformat:2 }}</dd>
+        <dd class="card-valor">R$ {{ gasto_pecas_mes|floatformat:"2g" }}</dd>
     </div>
 </dl>
 
+<!-- Projeção de peças -->
+<section class="painel-secao" id="projecao" aria-labelledby="titulo-projecao">
+    <div class="secao-cabecalho">
+        <h2 id="titulo-projecao">Projeção de Peças Necessárias</h2>
+        <p class="ajuda">Quantidade de cada peça prevista por mês, calculada pela média do mesmo mês nos anos anteriores.</p>
+    </div>
+
+    <form method="get" action="{% url 'dashboard' %}#projecao" class="form-projecao" aria-labelledby="titulo-periodo">
+        <h3 id="titulo-periodo" class="visually-hidden">Período da projeção</h3>
+        {% include 'includes/resumo_erros.html' with form=form_projecao %}
+        <div class="form-projecao-campos">
+            {% include 'includes/campo.html' with campo=form_projecao.inicio %}
+            {% include 'includes/campo.html' with campo=form_projecao.meses %}
+            <div class="form-projecao-acoes">
+                <button class="btn" type="submit">Projetar</button>
+                {% if projecao %}
+                <a class="btn btn-pdf" href="{% url 'dashboard_projecao_pdf' %}?{{ query_projecao }}">
+                    <span aria-hidden="true">⤓</span> Baixar relatório PDF
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <p class="ajuda">O período pode ter até 12 meses.</p>
+    </form>
+
+    {% if projecao %}
+    {% with primeiro=projecao.meses|first ultimo=projecao.meses|last %}
+    <p class="periodo-projetado" role="status">
+        Período: <strong>{{ primeiro.rotulo }}</strong> a <strong>{{ ultimo.rotulo }}</strong>
+    </p>
+    {% endwith %}
+
+    {% if projecao.linhas %}
+    <dl class="indicadores">
+        <div>
+            <dt>Peças projetadas</dt>
+            <dd>{{ projecao.total_pecas }}</dd>
+        </div>
+        <div>
+            <dt>Custo estimado</dt>
+            <dd>R$ {{ projecao.custo_total|floatformat:"2g" }}</dd>
+        </div>
+        <div>
+            <dt>Tipos de peça</dt>
+            <dd>{{ projecao.linhas|length }}</dd>
+        </div>
+        <div>
+            <dt>Histórico desde</dt>
+            <dd>{{ projecao.inicio_historico|date:"M/Y" }}</dd>
+        </div>
+    </dl>
+
+    <h3 class="titulo-bloco">Peças por mês</h3>
+    {% include 'manutencoes/grafico_colunas.html' with grafico=grafico_projecao id='grafico-projecao' unidade='peça(s)' titulo='Peças projetadas por mês' descricao='Colunas empilhadas com as peças de maior quantidade e as demais somadas. Os valores exatos estão na tabela a seguir.' %}
+
+    <h3 class="titulo-bloco" id="titulo-tabela-projecao">Quantidade projetada por peça</h3>
+    <div class="table-responsive" role="region" aria-labelledby="titulo-tabela-projecao" tabindex="0">
+        <table class="tabela-numeros">
+            <caption class="visually-hidden">Quantidade projetada de cada peça por mês, com total e custo estimado</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Peça</th>
+                    {% for mes in projecao.meses %}
+                    <th scope="col" class="numero">{{ mes.rotulo_curto }}</th>
+                    {% endfor %}
+                    <th scope="col" class="numero">Total</th>
+                    <th scope="col" class="numero">Custo estimado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in projecao.linhas %}
+                <tr>
+                    <th scope="row">{{ linha.peca }}</th>
+                    {% for quantidade in linha.quantidades %}
+                    <td class="numero">{% if quantidade %}{{ quantidade }}{% else %}<span aria-hidden="true">–</span><span class="visually-hidden">0</span>{% endif %}</td>
+                    {% endfor %}
+                    <td class="numero"><strong>{{ linha.total }}</strong></td>
+                    <td class="numero">R$ {{ linha.custo|floatformat:"2g" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="linha-total">
+                    <th scope="row">Total por mês</th>
+                    {% for mes in projecao.meses %}
+                    <td class="numero">{{ mes.total }}</td>
+                    {% endfor %}
+                    <td class="numero">{{ projecao.total_pecas }}</td>
+                    <td class="numero">R$ {{ projecao.custo_total|floatformat:"2g" }}</td>
+                </tr>
+                <tr class="linha-base">
+                    <th scope="row">Base do cálculo</th>
+                    {% for mes in projecao.meses %}
+                    <td class="numero">{{ mes.descricao_base }}</td>
+                    {% endfor %}
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <p class="ajuda">
+        <strong>Como é calculado:</strong> a quantidade de cada peça em um mês é a média do que foi usado no mesmo mês
+        dos anos anteriores ("Base do cálculo" mostra quantos anos entraram na média), arredondada para o inteiro mais próximo.
+        {% if projecao.usa_media_geral %}Meses que ainda não têm ano anterior no histórico usam a média mensal de todo o histórico ("Média geral").{% endif %}
+        O mês atual não entra na conta porque ainda não terminou, e o custo estimado usa o preço de custo atual de cada peça.
+    </p>
+    {% else %}
+    <p class="aviso-vazio">Ainda não há peças usadas em meses anteriores para projetar este período.
+        Registre as peças usadas nas manutenções para que a projeção apareça aqui.</p>
+    {% endif %}
+    {% endif %}
+</section>
+
 <!-- Histórico Mensal -->
-<h2 id="titulo-historico">Histórico de Manutenções</h2>
-<div class="table-responsive" role="region" aria-labelledby="titulo-historico" tabindex="0">
-    <table>
-        <caption class="visually-hidden">Quantidade de manutenções por mês, separadas em preventivas e corretivas</caption>
-        <thead>
-            <tr>
-                <th scope="col">Mês/Ano</th>
-                <th scope="col">Total de Serviços</th>
-                <th scope="col">Preventivas</th>
-                <th scope="col">Corretivas</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for linha in historico_servicos %}
-            <tr>
-                <th scope="row">{{ linha.mes|date:"F / Y" }}</th>
-                <td><strong>{{ linha.total_servicos }}</strong></td>
-                <td>{{ linha.preventivas }}</td>
-                <td>{{ linha.corretivas }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">Nenhum serviço registrado ainda.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<section class="painel-secao" aria-labelledby="titulo-historico">
+    <div class="secao-cabecalho">
+        <h2 id="titulo-historico">Histórico de Manutenções</h2>
+        <p class="ajuda">Serviços preventivos e corretivos por mês.</p>
+    </div>
+
+    {% if not grafico_historico.vazio %}
+    <h3 class="titulo-bloco">Últimos 12 meses</h3>
+    {% include 'manutencoes/grafico_colunas.html' with grafico=grafico_historico id='grafico-historico' unidade='serviço(s)' titulo='Manutenções nos últimos 12 meses' descricao='Colunas empilhadas com manutenções preventivas e corretivas por mês. Os valores exatos estão na tabela a seguir.' %}
+    {% endif %}
+
+    <h3 class="titulo-bloco" id="titulo-tabela-historico">Todos os meses</h3>
+    <div class="table-responsive" role="region" aria-labelledby="titulo-tabela-historico" tabindex="0">
+        <table class="tabela-numeros">
+            <caption class="visually-hidden">Quantidade de manutenções por mês, separadas em preventivas e corretivas</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Mês/Ano</th>
+                    <th scope="col" class="numero">Total de Serviços</th>
+                    <th scope="col" class="numero">Preventivas</th>
+                    <th scope="col" class="numero">Corretivas</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for linha in historico_servicos %}
+                <tr>
+                    <th scope="row">{{ linha.mes|date:"F / Y" }}</th>
+                    <td class="numero"><strong>{{ linha.total_servicos }}</strong></td>
+                    <td class="numero">{{ linha.preventivas }}</td>
+                    <td class="numero">{{ linha.corretivas }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">Nenhum serviço registrado ainda.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 
 <style>
+    .painel-topo {
+        margin-bottom: 16px;
+    }
+    .painel-topo h1 {
+        margin-bottom: 0;
+    }
+    .painel-subtitulo {
+        margin: 2px 0 0;
+        color: #4b5563;
+    }
     .cards-resumo {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 16px;
-        margin: 0 0 30px;
+        margin: 0 0 28px;
     }
     .card-resumo {
-        flex: 1 1 220px;
-        color: white;
-        padding: 20px;
-        border-radius: 8px;
+        padding: 18px 20px;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        border-top: 5px solid var(--cor-card);
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     }
-    .card-azul {
-        background: #2563eb;
-    }
-    /* Verde mais escuro para garantir contraste mínimo de 4,5:1 com o texto branco */
-    .card-verde {
-        background: #15803d;
-    }
+    .card-azul { --cor-card: #2a78d6; }
+    .card-laranja { --cor-card: #eb6834; }
+    .card-verde { --cor-card: #15803d; }
     .card-titulo {
         display: block;
         font-size: 0.95rem;
-        margin-bottom: 8px;
+        color: #4b5563;
+        margin-bottom: 6px;
     }
     .card-valor {
         font-size: 2rem;
         font-weight: bold;
         margin: 0;
+        color: #111827;
     }
-    tbody th {
+    .painel-secao {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 28px;
+        background: #fff;
+    }
+    .secao-cabecalho {
+        margin-bottom: 16px;
+    }
+    .secao-cabecalho h2 {
+        font-size: 1.3rem;
+        margin: 0 0 2px;
+    }
+    .secao-cabecalho .ajuda {
+        margin: 0;
+    }
+    .titulo-bloco {
+        font-size: 1.05rem;
+        margin: 24px 0 8px;
+    }
+    .form-projecao {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 16px 16px 4px;
+        margin-bottom: 16px;
+    }
+    .form-projecao-campos {
+        display: grid;
+        grid-template-columns: minmax(200px, 260px) minmax(140px, 180px) 1fr;
+        gap: 0 16px;
+        align-items: end;
+    }
+    .form-projecao-acoes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    .btn-pdf {
+        background: #b91c1c;
+    }
+    .form-projecao .ajuda {
+        margin: 0 0 12px;
+    }
+    .periodo-projetado {
+        margin: 0 0 12px;
+    }
+    .indicadores {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1px;
+        margin: 0 0 8px;
+        background: #e5e7eb;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .indicadores > div {
+        background: #fff;
+        padding: 12px 16px;
+    }
+    .indicadores dt {
+        font-size: 0.9rem;
+        color: #4b5563;
+    }
+    .indicadores dd {
+        margin: 2px 0 0;
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+    .aviso-vazio {
+        padding: 16px;
+        border-radius: 8px;
+        background: #f9fafb;
+        border: 1px dashed #9ca3af;
+        color: #374151;
+    }
+
+    /* Gráficos de colunas */
+    .grafico {
+        margin: 0 0 8px;
+    }
+    .grafico-rolagem {
+        overflow-x: auto;
+    }
+    .grafico svg {
+        display: block;
+        width: 100%;
+        min-width: 560px;
+        height: auto;
+        max-height: 360px;
+        font-family: inherit;
+    }
+    .legenda {
+        list-style: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 18px;
+        margin: 0 0 8px;
+        padding: 0;
+        font-size: 0.9rem;
+        color: #374151;
+    }
+    .legenda li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .amostra {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        flex: none;
+    }
+    .grafico .grade line {
+        stroke: #e5e7eb;
+        stroke-width: 1;
+    }
+    .grafico .grade line.base {
+        stroke: #9ca3af;
+    }
+    .grafico text {
+        font-size: 11px;
+        fill: #4b5563;
+        font-variant-numeric: tabular-nums;
+    }
+    .grafico text.total {
+        fill: #111827;
+        font-weight: bold;
+    }
+    .grafico .area-coluna {
+        fill: transparent;
+    }
+    .grafico .coluna:hover .area-coluna {
+        fill: rgba(17, 24, 39, 0.05);
+    }
+    .grafico .coluna:hover path {
+        filter: brightness(0.92);
+    }
+
+    /* Tabelas numéricas */
+    .tabela-numeros .numero {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .tabela-numeros thead th {
+        background: #f3f4f6;
+    }
+    .tabela-numeros tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+    .tabela-numeros tfoot .linha-total {
+        font-weight: bold;
+        background: #f3f4f6;
+    }
+    .tabela-numeros tfoot .linha-base {
+        font-size: 0.85rem;
+        color: #4b5563;
+    }
+    tbody th,
+    tfoot .linha-base th {
         font-weight: normal;
+    }
+
+    @media (max-width: 700px) {
+        .form-projecao-campos {
+            grid-template-columns: 1fr;
+        }
+        .painel-secao {
+            padding: 14px;
+        }
+    }
+
+    /* Alto contraste: fundo preto e textos brancos também nos gráficos e indicadores */
+    html.alto-contraste .painel-secao,
+    html.alto-contraste .form-projecao,
+    html.alto-contraste .indicadores,
+    html.alto-contraste .indicadores > div,
+    html.alto-contraste .aviso-vazio {
+        background: #000 !important;
+        color: #fff !important;
+        border-color: #fff !important;
+    }
+    html.alto-contraste .painel-subtitulo,
+    html.alto-contraste .card-titulo,
+    html.alto-contraste .card-valor,
+    html.alto-contraste .indicadores dt,
+    html.alto-contraste .legenda {
+        color: #fff !important;
+    }
+    html.alto-contraste .grafico text {
+        fill: #fff !important;
+    }
+    html.alto-contraste .grafico .grade line {
+        stroke: #555 !important;
+    }
+    html.alto-contraste .grafico .grade line.base {
+        stroke: #fff !important;
+    }
+    html.alto-contraste .tabela-numeros tbody tr,
+    html.alto-contraste .tabela-numeros tfoot tr {
+        background: #000 !important;
     }
 </style>
 {% endblock %}

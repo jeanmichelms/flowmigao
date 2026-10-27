@@ -1,0 +1,39 @@
+{% load l10n %}{% comment %}
+Gráfico de colunas empilhadas em SVG, a partir de manutencoes.graficos.colunas_empilhadas.
+Uso: {% include 'manutencoes/grafico_colunas.html' with grafico=... id='...' titulo='...' descricao='...' unidade='...' %}
+A tabela da mesma seção traz os valores exatos; o gráfico é um resumo visual dela.
+{% endcomment %}
+<figure class="grafico">
+    <ul class="legenda" aria-hidden="true">
+        {% for serie in grafico.series %}
+        <li><span class="amostra" style="background: {{ serie.cor }}"></span>{{ serie.nome }}</li>
+        {% endfor %}
+    </ul>
+    {% localize off %}{# coordenadas com ponto decimal, não vírgula #}
+    {# No celular o gráfico mantém uma largura mínima legível e rola na horizontal, como as tabelas #}
+    <div class="grafico-rolagem" role="region" aria-labelledby="{{ id }}-titulo" tabindex="0">
+    <svg viewBox="0 0 {{ grafico.largura }} {{ grafico.altura }}" role="img"
+         aria-labelledby="{{ id }}-titulo {{ id }}-descricao" focusable="false">
+        <title id="{{ id }}-titulo">{{ titulo }}</title>
+        <desc id="{{ id }}-descricao">{{ descricao }}</desc>
+        <g class="grade">
+            {% for linha in grafico.linhas_grade %}
+            <line x1="{{ grafico.esquerda }}" x2="{{ grafico.direita }}" y1="{{ linha.y }}" y2="{{ linha.y }}"{% if forloop.first %} class="base"{% endif %}/>
+            <text x="{{ grafico.esquerda|add:'-8' }}" y="{{ linha.y }}" dy="4" text-anchor="end">{{ linha.valor }}</text>
+            {% endfor %}
+        </g>
+        {% for coluna in grafico.colunas %}
+        <g class="coluna">
+            <title>{{ coluna.rotulo }}: {{ coluna.total }} {{ unidade }}</title>
+            <rect class="area-coluna" x="{{ coluna.faixa_x }}" y="{{ grafico.topo }}" width="{{ grafico.faixa }}" height="{{ grafico.area_altura }}"/>
+            {% for segmento in coluna.segmentos %}
+            <path d="{{ segmento.caminho }}" fill="{{ segmento.cor }}"><title>{{ segmento.nome }} – {{ coluna.rotulo }}: {{ segmento.valor }} {{ unidade }}</title></path>
+            {% endfor %}
+            {% if coluna.total %}<text class="total" x="{{ coluna.centro }}" y="{{ coluna.y_total }}" text-anchor="middle">{{ coluna.total }}</text>{% endif %}
+            <text class="rotulo" x="{{ coluna.centro }}" y="{{ grafico.rotulo_y }}" text-anchor="middle">{{ coluna.rotulo }}</text>
+        </g>
+        {% endfor %}
+    </svg>
+    </div>
+    {% endlocalize %}
+</figure>

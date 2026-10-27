@@ -1,18 +1,22 @@
 from datetime import date, datetime, time
+from urllib.parse import urlencode
 
 from django.db.models import ProtectedError, Q, Count, Sum
 from django.db.models.functions import TruncMonth
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
-from django.utils import timezone
+from django.utils import dateformat, timezone
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 
 from clientes.models import Cliente
 from veiculos.models import Veiculo
-from .forms import ManutencaoForm, add_months, PecaForm, PecaUsadaForm
+from .forms import ManutencaoForm, add_months, PecaForm, PecaUsadaForm, ProjecaoPecasForm
+from .graficos import colunas_empilhadas
 from .models import Manutencao, Peca, PecaUsada
+from .projecao import projetar_pecas
+from .relatorio_pdf import gerar_pdf_projecao
 
 
 class ManutencaoListView(ListView):
@@ -227,6 +231,32 @@ class VeiculoBuscaView(View):
 
 
 
+MESES_HISTORICO_GRAFICO = 12
+
+
+def _form_projecao(request, hoje):
+    # Sem parâmetros na URL, usa o período padrão (a partir do próximo mês)
+    dados = request.GET if 'inicio' in request.GET or 'meses' in request.GET else ProjecaoPecasForm(hoje=hoje).initial
+    return ProjecaoPecasForm(dados, hoje=hoje)
+
+
+def _grafico_historico(historico_servicos, hoje):
+    """Preventivas e corretivas dos últimos 12 meses (inclui o atual e meses sem serviço)."""
+    mes_atual = hoje.replace(day=1)
+    meses = [add_months(mes_atual, i - MESES_HISTORICO_GRAFICO + 1) for i in range(MESES_HISTORICO_GRAFICO)]
+    por_mes = {linha['mes']: linha for linha in historico_servicos if linha['mes'] >= meses[0]}
+    return colunas_empilhadas(
+        [dateformat.format(mes, 'M/y') for mes in meses],
+        [
+            {'nome': 'Preventivas', 'cor': '#2a78d6',
+             'valores': [por_mes.get(mes, {}).get('preventivas', 0) for mes in meses]},
+            {'nome': 'Corretivas', 'cor': '#eb6834',
+             'valores': [por_mes.get(mes, {}).get('corretivas', 0) for mes in meses]},
+        ],
+    )
+
+
+
 def dashboard_gerencial(request):
     hoje = timezone.localdate()
 
@@ -255,9 +285,48 @@ def dashboard_gerencial(request):
         manutencao__data_manutencao__month=hoje.month
     ).aggregate(total=Sum('valor_total_custo'))['total'] or 0.00
 
+    # 4. Projeção de peças para o período escolhido
+    form_projecao = _form_projecao(request, hoje)
+    projecao = None
+    grafico_projecao = None
+    if form_projecao.is_valid():
+        projecao = projetar_pecas(form_projecao.cleaned_data['inicio'], form_projecao.cleaned_data['meses'], hoje)
+        grafico_projecao = colunas_empilhadas(
+            [mes.rotulo_curto for mes in projecao.meses], projecao.series_grafico()
+        )
+
     context = {
         'clientes_mes': clientes_mes,
+        'servicos_mes': Manutencao.objects.filter(
+            data_manutencao__gte=hoje.replace(day=1),
+            data_manutencao__lt=add_months(hoje.replace(day=1), 1),
+        ).count(),
         'historico_servicos': historico_servicos,
+        'grafico_historico': _grafico_historico(historico_servicos, hoje),
         'gasto_pecas_mes': gasto_pecas_mes,
+        'form_projecao': form_projecao,
+        'projecao': projecao,
+        'grafico_projecao': grafico_projecao,
+        'mes_atual': hoje,
+        # Mesmo período no link do PDF, inclusive quando a tela abriu com o período padrão
+        'query_projecao': urlencode({
+            'inicio': form_projecao.data.get('inicio', ''), 'meses': form_projecao.data.get('meses', ''),
+        }),
     }
     return render(request, 'manutencoes/dashboard.html', context)
+
+
+def projecao_pecas_pdf(request):
+    hoje = timezone.localdate()
+    form = _form_projecao(request, hoje)
+    if not form.is_valid():
+        # Volta ao painel, que mostra os erros do período
+        return redirect(f"{reverse('dashboard')}?{request.GET.urlencode()}#projecao")
+
+    projecao = projetar_pecas(form.cleaned_data['inicio'], form.cleaned_data['meses'], hoje)
+    primeiro, ultimo = projecao.meses[0].inicio, projecao.meses[-1].inicio
+    resposta = HttpResponse(gerar_pdf_projecao(projecao), content_type='application/pdf')
+    resposta['Content-Disposition'] = (
+        f'attachment; filename="projecao-pecas-{primeiro:%Y-%m}-a-{ultimo:%Y-%m}.pdf"'
+    )
+    return resposta

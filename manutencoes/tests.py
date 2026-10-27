@@ -1,5 +1,6 @@
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from unittest import mock
 
 from django.core import mail
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -10,7 +11,8 @@ from clientes.models import Cliente
 from usuarios.apoio_testes import entrar
 from veiculos.models import Veiculo
 
-from .forms import ManutencaoForm, add_months
+from .forms import ManutencaoForm, ProjecaoPecasForm, add_months
+from .graficos import colunas_empilhadas, escala
 from .hosted_service import (
     AvisoRevisaoHostedService,
     _dias_antecedencia,
@@ -18,6 +20,7 @@ from .hosted_service import (
     enviar_avisos_revisao,
 )
 from .models import Manutencao, Peca, PecaUsada
+from .projecao import BASE_MEDIA_GERAL, BASE_MESMO_MES, BASE_SEM_HISTORICO, projetar_pecas
 
 
 @override_settings(
@@ -419,6 +422,205 @@ class PainelGerencialTests(TestCase):
 
         self.assertEqual(resposta.context['gasto_pecas_mes'], 0)
         self.assertContains(resposta, 'Nenhum serviço registrado ainda.')
+
+
+HOJE_PROJECAO = date(2026, 10, 26)
+
+
+class ProjecaoPecasTests(TestCase):
+    def setUp(self):
+        cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
+        self.veiculo = Veiculo.objects.create(cliente=cliente, marca='Fiat', modelo='Uno', ano=2020, placa='XYZ9A87')
+        self.filtro = Peca.objects.create(nome='Filtro', preco_custo=Decimal('30.00'))
+        self.vela = Peca.objects.create(nome='Vela', preco_custo=Decimal('10.00'))
+
+    def _usar(self, peca, data, quantidade):
+        manutencao = Manutencao.objects.create(
+            veiculo=self.veiculo, descricao='Serviço', data_manutencao=data,
+            quilometragem=10000, valor='100.00',
+        )
+        PecaUsada.objects.create(manutencao=manutencao, peca=peca, quantidade=quantidade)
+
+    def test_media_do_mesmo_mes_nos_anos_anteriores(self):
+        self._usar(self.filtro, date(2024, 11, 5), 2)
+        self._usar(self.filtro, date(2025, 11, 20), 5)
+        self._usar(self.filtro, date(2025, 12, 1), 7)  # outro mês, não entra em novembro
+
+        projecao = projetar_pecas(date(2026, 11, 1), 1, HOJE_PROJECAO)
+
+        mes = projecao.meses[0]
+        self.assertEqual((mes.base, mes.anos_base, mes.total), (BASE_MESMO_MES, 2, 4))  # (2 + 5) / 2 = 3,5 -> 4
+        linha = projecao.linhas[0]
+        self.assertEqual((linha.peca, linha.quantidades, linha.custo), (self.filtro, [4], Decimal('120.00')))
+
+    def test_mes_atual_nao_entra_no_historico(self):
+        self._usar(self.filtro, date(2025, 10, 10), 4)
+        self._usar(self.filtro, date(2026, 10, 3), 40)  # outubro/2026 ainda não terminou
+
+        projecao = projetar_pecas(date(2027, 10, 1), 1, HOJE_PROJECAO)
+
+        self.assertEqual(projecao.meses[0].anos_base, 1)
+        self.assertEqual(projecao.linhas[0].quantidades, [4])
+
+    def test_meses_antes_do_primeiro_registro_nao_contam_como_zero(self):
+        self._usar(self.filtro, date(2025, 11, 10), 6)
+
+        projecao = projetar_pecas(date(2026, 11, 1), 1, HOJE_PROJECAO)
+
+        # novembro/2024 é anterior ao histórico: a média usa só novembro/2025
+        self.assertEqual(projecao.meses[0].anos_base, 1)
+        self.assertEqual(projecao.linhas[0].quantidades, [6])
+
+    def test_sem_ano_anterior_usa_media_geral(self):
+        # Histórico de agosto e setembro/2026: novembro ainda não tem ano anterior
+        self._usar(self.filtro, date(2026, 8, 10), 3)
+        self._usar(self.filtro, date(2026, 9, 10), 1)
+
+        projecao = projetar_pecas(date(2026, 11, 1), 1, HOJE_PROJECAO)
+
+        self.assertEqual(projecao.meses[0].base, BASE_MEDIA_GERAL)
+        self.assertTrue(projecao.usa_media_geral)
+        self.assertEqual(projecao.linhas[0].quantidades, [2])  # 4 peças em 2 meses
+
+    def test_ordena_por_total_e_ignora_pecas_sem_projecao(self):
+        self._usar(self.filtro, date(2025, 11, 10), 1)
+        self._usar(self.vela, date(2025, 11, 10), 4)
+        self._usar(self.filtro, date(2025, 6, 10), 9)  # junho fica fora do período
+
+        projecao = projetar_pecas(date(2026, 11, 1), 2, HOJE_PROJECAO)
+
+        self.assertEqual([linha.peca for linha in projecao.linhas], [self.vela, self.filtro])
+        self.assertEqual([mes.total for mes in projecao.meses], [5, 0])
+        self.assertEqual(projecao.total_pecas, 5)
+        self.assertEqual(projecao.custo_total, Decimal('70.00'))
+
+    def test_sem_historico(self):
+        projecao = projetar_pecas(date(2026, 11, 1), 3, HOJE_PROJECAO)
+
+        self.assertEqual(projecao.linhas, [])
+        self.assertEqual([mes.base for mes in projecao.meses], [BASE_SEM_HISTORICO] * 3)
+
+    def test_grafico_agrupa_as_demais_pecas(self):
+        pecas = [Peca.objects.create(nome=f'Peça {i}', preco_custo=1) for i in range(7)]
+        for i, peca in enumerate(pecas):
+            self._usar(peca, date(2025, 11, 10), i + 1)
+
+        series = projetar_pecas(date(2026, 11, 1), 1, HOJE_PROJECAO).series_grafico()
+
+        self.assertEqual([serie['nome'] for serie in series],
+                         ['Peça 6', 'Peça 5', 'Peça 4', 'Peça 3', 'Peça 2', 'Outras peças (2)'])
+        self.assertEqual(series[-1]['valores'], [3])  # 1 + 2
+
+
+class ProjecaoPecasFormTests(SimpleTestCase):
+    def test_periodo_padrao_comeca_no_proximo_mes(self):
+        form = ProjecaoPecasForm(hoje=HOJE_PROJECAO)
+
+        self.assertEqual((form.initial['inicio'], form.initial['meses']), ('2026-11', 6))
+
+    def test_periodo_valido(self):
+        form = ProjecaoPecasForm({'inicio': '2027-10', 'meses': '12'}, hoje=HOJE_PROJECAO)
+
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data, {'inicio': date(2027, 10, 1), 'meses': 12})
+
+    def test_periodo_maximo_de_um_ano(self):
+        form = ProjecaoPecasForm({'inicio': '2026-11', 'meses': '13'}, hoje=HOJE_PROJECAO)
+
+        self.assertIn('meses', form.errors)
+
+    def test_inicio_no_passado_ou_longe_demais(self):
+        for inicio in ('2026-09', '2027-11'):
+            with self.subTest(inicio=inicio):
+                form = ProjecaoPecasForm({'inicio': inicio, 'meses': '1'}, hoje=HOJE_PROJECAO)
+                self.assertIn('inicio', form.errors)
+
+
+class GraficoColunasTests(SimpleTestCase):
+    def test_escala_usa_passos_redondos(self):
+        self.assertEqual(escala(0), (1, 4))
+        self.assertEqual(escala(3), (1, 3))
+        self.assertEqual(escala(39), (10, 40))
+        self.assertEqual(escala(130), (50, 150))
+
+    def test_segmentos_empilhados_so_para_valores_positivos(self):
+        grafico = colunas_empilhadas(['jan', 'fev'], [
+            {'nome': 'A', 'cor': '#000', 'valores': [2, 0]},
+            {'nome': 'B', 'cor': '#fff', 'valores': [1, 0]},
+        ])
+
+        primeira, segunda = grafico['colunas']
+        self.assertEqual([s['nome'] for s in primeira['segmentos']], ['A', 'B'])
+        self.assertEqual((primeira['total'], segunda['segmentos']), (3, []))
+        self.assertFalse(grafico['vazio'])
+
+
+@mock.patch('manutencoes.views.timezone.localdate', return_value=HOJE_PROJECAO)
+class ProjecaoPecasTelaTests(TestCase):
+    def setUp(self):
+        entrar(self.client)
+        cliente = Cliente.objects.create(nome='Ana', cpf='111.222.333-44', email='ana@example.com')
+        veiculo = Veiculo.objects.create(cliente=cliente, marca='Fiat', modelo='Uno', ano=2020, placa='XYZ9A87')
+        manutencao = Manutencao.objects.create(
+            veiculo=veiculo, descricao='Serviço', data_manutencao=date(2025, 12, 10),
+            quilometragem=10000, valor='100.00',
+        )
+        self.peca = Peca.objects.create(nome='Filtro & Cia', preco_custo=Decimal('30.00'))
+        PecaUsada.objects.create(manutencao=manutencao, peca=self.peca, quantidade=3)
+
+    def test_painel_mostra_projecao_do_periodo_padrao(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'))
+
+        projecao = resposta.context['projecao']
+        self.assertEqual([mes.inicio for mes in projecao.meses][:2], [date(2026, 11, 1), date(2026, 12, 1)])
+        self.assertEqual(len(projecao.meses), 6)
+        self.assertEqual(projecao.linhas[0].quantidades, [0, 3, 0, 0, 0, 0])
+        self.assertContains(resposta, 'id="grafico-projecao-titulo"')
+        self.assertContains(resposta, '<th scope="row">Filtro &amp; Cia</th>', html=True)
+        self.assertContains(resposta, f'{reverse("dashboard_projecao_pdf")}?inicio=2026-11&amp;meses=6')
+
+    def test_periodo_escolhido(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'), {'inicio': '2026-12', 'meses': '1'})
+
+        self.assertEqual(resposta.context['projecao'].linhas[0].quantidades, [3])
+
+    def test_periodo_invalido_mostra_erro(self, _hoje):
+        resposta = self.client.get(reverse('dashboard'), {'inicio': '2026-12', 'meses': '24'})
+
+        self.assertIsNone(resposta.context['projecao'])
+        self.assertContains(resposta, 'id="resumo-erros"')
+        self.assertNotContains(resposta, 'Baixar relatório PDF')
+
+    def test_sem_historico_avisa(self, _hoje):
+        PecaUsada.objects.all().delete()
+
+        resposta = self.client.get(reverse('dashboard'))
+
+        self.assertContains(resposta, 'Ainda não há peças usadas em meses anteriores')
+
+    def test_relatorio_pdf(self, _hoje):
+        resposta = self.client.get(reverse('dashboard_projecao_pdf'), {'inicio': '2026-11', 'meses': '12'})
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(resposta['Content-Type'], 'application/pdf')
+        self.assertEqual(
+            resposta['Content-Disposition'], 'attachment; filename="projecao-pecas-2026-11-a-2027-10.pdf"'
+        )
+        self.assertTrue(resposta.content.startswith(b'%PDF'))
+
+    def test_relatorio_pdf_sem_historico(self, _hoje):
+        PecaUsada.objects.all().delete()
+
+        resposta = self.client.get(reverse('dashboard_projecao_pdf'))
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertTrue(resposta.content.startswith(b'%PDF'))
+
+    def test_relatorio_pdf_com_periodo_invalido_volta_ao_painel(self, _hoje):
+        resposta = self.client.get(reverse('dashboard_projecao_pdf'), {'inicio': '2026-11', 'meses': '13'})
+
+        self.assertRedirects(resposta, f'{reverse("dashboard")}?inicio=2026-11&meses=13#projecao',
+                             fetch_redirect_response=False)
 
 
 @override_settings(
