@@ -3,7 +3,6 @@ from urllib.parse import urlencode
 
 from django.db.models import ProtectedError, Q, Count, Sum
 from django.db.models.functions import TruncMonth
-from django.core.paginator import Paginator
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -12,6 +11,7 @@ from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
 
 from clientes.models import Cliente
+from flowmigao.paginacao import LIMITE_RESULTADOS_MODAL, ListaComBuscaMixin, paginar_tabela, parametros_exceto
 from veiculos.models import Veiculo
 from .forms import ManutencaoForm, add_months, PecaForm, PecaUsadaForm, ProjecaoPecasForm
 from .graficos import colunas_empilhadas
@@ -20,10 +20,18 @@ from .projecao import projetar_pecas
 from .relatorio_pdf import gerar_pdf_projecao
 
 
-class ManutencaoListView(ListView):
+class ManutencaoListView(ListaComBuscaMixin, ListView):
     model = Manutencao
+    queryset = Manutencao.objects.select_related('veiculo__cliente')
     template_name = 'manutencoes/lista.html'
     context_object_name = 'manutencoes'
+    campos_busca = [
+        'veiculo__cliente__nome', 'veiculo__cliente__cpf', 'veiculo__marca', 'veiculo__modelo',
+        'veiculo__placa', 'descricao',
+    ]
+    campos_busca_numericos = ['id', 'veiculo__ano']
+    rotulo_itens = 'manutenções'
+    ajuda_busca = 'Cliente, CPF, marca, modelo, placa, descrição ou ano do veículo.'
 
 
 class ManutencaoCreateView(CreateView):
@@ -132,10 +140,14 @@ class PecaUsadaRemoverView(View):
         return redirect('manutencoes_detalhe', pk=manutencao_id)
 
 
-class PecaListView(ListView):
+class PecaListView(ListaComBuscaMixin, ListView):
     model = Peca
     template_name = 'pecas/lista.html'
     context_object_name = 'pecas'
+    campos_busca = ['nome', 'marca']
+    campos_busca_numericos = ['id']
+    rotulo_itens = 'peças'
+    ajuda_busca = 'Nome ou marca da peça.'
 
 
 class PecaCreateView(CreateView):
@@ -213,7 +225,8 @@ class VeiculoBuscaView(View):
 
             veiculos = veiculos.filter(condicao)
 
-        veiculos = veiculos.order_by('cliente__nome', 'marca', 'modelo', 'placa')[:50]
+        total = veiculos.count()
+        veiculos = veiculos.order_by('cliente__nome', 'marca', 'modelo', 'placa')[:LIMITE_RESULTADOS_MODAL]
 
         resultados = [
             {
@@ -228,46 +241,11 @@ class VeiculoBuscaView(View):
             for veiculo in veiculos
         ]
 
-        return JsonResponse({'results': resultados})
+        return JsonResponse({'results': resultados, 'total': total, 'limite': LIMITE_RESULTADOS_MODAL})
 
 
 
 MESES_HISTORICO_GRAFICO = 12
-# Itens por página que o usuário pode escolher nas tabelas do painel (o primeiro é o padrão)
-OPCOES_POR_PAGINA = [10, 25, 50, 100]
-
-
-def _paginar_tabela(request, itens, prefixo, ancora):
-    """Paginação de uma tabela do painel, com parâmetros próprios (`pagina_<prefixo>` e
-    `por_pagina_<prefixo>`) para que as tabelas da mesma tela paginem de forma independente."""
-    param_pagina, param_por_pagina = f'pagina_{prefixo}', f'por_pagina_{prefixo}'
-    por_pagina = request.GET.get(param_por_pagina, '')
-    por_pagina = int(por_pagina) if por_pagina.isdigit() and int(por_pagina) in OPCOES_POR_PAGINA else OPCOES_POR_PAGINA[0]
-    pagina = Paginator(itens, por_pagina).get_page(request.GET.get(param_pagina))
-
-    def url_da_pagina(numero):
-        parametros = request.GET.copy()
-        parametros[param_pagina] = numero
-        return f'?{parametros.urlencode()}#{ancora}'
-
-    return {
-        'pagina': pagina,
-        'prefixo': prefixo,
-        'ancora': ancora,
-        'param_por_pagina': param_por_pagina,
-        'por_pagina': por_pagina,
-        'opcoes': OPCOES_POR_PAGINA,
-        'url_anterior': url_da_pagina(pagina.previous_page_number()) if pagina.has_previous() else None,
-        'url_proxima': url_da_pagina(pagina.next_page_number()) if pagina.has_next() else None,
-        # Ao trocar a quantidade por página, mantém o resto da tela e volta para a primeira página desta tabela
-        'ocultos': _parametros_exceto(request, param_pagina, param_por_pagina),
-    }
-
-
-def _parametros_exceto(request, *nomes):
-    return [(nome, valor) for nome, valores in request.GET.lists() if nome not in nomes for valor in valores]
-
-
 def _form_projecao(request, hoje):
     # Sem parâmetros na URL, usa o período padrão (a partir do próximo mês)
     dados = request.GET if 'inicio' in request.GET or 'meses' in request.GET else ProjecaoPecasForm(hoje=hoje).initial
@@ -330,7 +308,7 @@ def dashboard_gerencial(request):
             [mes.rotulo_curto for mes in projecao.meses], projecao.series_grafico()
         )
         # Só a tabela é paginada: gráfico, totais e PDF usam todas as peças
-        tabela_projecao = _paginar_tabela(request, projecao.linhas, 'pecas', 'titulo-tabela-projecao')
+        tabela_projecao = paginar_tabela(request, projecao.linhas, 'pecas', 'titulo-tabela-projecao')
 
     context = {
         'clientes_mes': clientes_mes,
@@ -340,14 +318,14 @@ def dashboard_gerencial(request):
         ).count(),
         'historico_servicos': historico_servicos,
         'grafico_historico': _grafico_historico(historico_servicos, hoje),
-        'tabela_historico': _paginar_tabela(request, historico_servicos, 'historico', 'titulo-tabela-historico'),
+        'tabela_historico': paginar_tabela(request, historico_servicos, 'historico', 'titulo-tabela-historico'),
         'gasto_pecas_mes': gasto_pecas_mes,
         'form_projecao': form_projecao,
         'projecao': projecao,
         'grafico_projecao': grafico_projecao,
         'tabela_projecao': tabela_projecao,
         # Um período novo volta a tabela de peças para a primeira página; o resto da tela é mantido
-        'ocultos_projecao': _parametros_exceto(request, 'inicio', 'meses', 'pagina_pecas'),
+        'ocultos_projecao': parametros_exceto(request, 'inicio', 'meses', 'pagina_pecas'),
         'mes_atual': hoje,
         # Mesmo período no link do PDF, inclusive quando a tela abriu com o período padrão
         'query_projecao': urlencode({

@@ -55,6 +55,8 @@
             <input type="search" id="filtro-cliente" placeholder="Digite para filtrar clientes">
         </div>
 
+        <p class="aviso-limite" id="aviso-limite-clientes" hidden></p>
+
         <div class="table-responsive">
             <table>
                 <caption class="visually-hidden">Resultado da pesquisa de clientes</caption>
@@ -143,6 +145,7 @@
         const fecharModalBtn = document.getElementById('fechar-modal-cliente');
         const filtroInput = document.getElementById('filtro-cliente');
         const resultadoBody = document.getElementById('resultado-clientes');
+        const avisoLimite = document.getElementById('aviso-limite-clientes');
         const clienteHiddenInput = document.getElementById('id_cliente');
         const clienteBuscaInput = document.getElementById('id_cliente_busca');
         const buscarUrl = "{% url 'veiculos_buscar_clientes' %}";
@@ -164,7 +167,21 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function renderResultados(clientes) {
+        // A busca traz no máximo os primeiros resultados (limite do servidor): avisa quando há mais
+        function mostrarAvisoLimite(exibidos, total) {
+            const cortou = total > exibidos;
+            avisoLimite.hidden = !cortou;
+            avisoLimite.innerHTML = cortou
+                ? `<span aria-hidden="true">⚠</span> Mostrando os ${exibidos} primeiros de ${total} clientes encontrados. Refine a busca para ver os outros.`
+                : '';
+            return cortou;
+        }
+
+        function renderResultados(dados) {
+            const clientes = dados.results || [];
+            const total = dados.total ?? clientes.length;
+            const cortou = mostrarAvisoLimite(clientes.length, total);
+
             if (!clientes.length) {
                 resultadoBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado.</td></tr>';
                 FlowMigao.anunciar('Nenhum cliente encontrado.');
@@ -185,9 +202,15 @@
                 `;
             }).join('');
 
-            FlowMigao.anunciar(
-                clientes.length === 1 ? '1 cliente encontrado.' : `${clientes.length} clientes encontrados.`
-            );
+            if (cortou) {
+                FlowMigao.anunciar(
+                    `${total} clientes encontrados. Mostrando os ${clientes.length} primeiros; refine a busca para ver os outros.`
+                );
+            } else {
+                FlowMigao.anunciar(
+                    clientes.length === 1 ? '1 cliente encontrado.' : `${clientes.length} clientes encontrados.`
+                );
+            }
 
             resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
                 botao.addEventListener('click', function (event) {
@@ -203,6 +226,7 @@
         function buscarClientes(termo) {
             const url = `${buscarUrl}?q=${encodeURIComponent(termo || '')}`;
             resultadoBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+            mostrarAvisoLimite(0, 0);
 
             fetch(url, {
                 headers: {
@@ -213,7 +237,7 @@
                     return response.json();
                 })
                 .then(function (data) {
-                    renderResultados(data.results || []);
+                    renderResultados(data);
                 })
                 .catch(function () {
                     resultadoBody.innerHTML = '<tr><td colspan="6">Erro ao buscar clientes.</td></tr>';

@@ -54,7 +54,8 @@ fica registrada com o usuário, a data/hora e os campos que mudaram (valor anter
 é feito automaticamente pelos sinais do Django (app `auditoria`), então vale para todas as telas e
 também para o `/admin/`.
 
-- **Tela Auditoria** (só administradores): lista com filtros por tipo de registro, ação, usuário, período e texto.
+- **Tela Auditoria** (só administradores): lista com filtros por tipo de registro, ação, usuário, período e texto,
+  paginada como as demais listas (10 itens por página por padrão, com opção de 25, 50 ou 100).
 - **Telas de detalhe** de cliente, veículo e manutenção mostram quem cadastrou e quem fez a última alteração;
   o administrador tem um link para o histórico completo daquele registro.
 - Alterações feitas fora de uma tela, como o aviso de revisão por e-mail marcando o envio, aparecem como **Sistema**.
@@ -67,6 +68,25 @@ também para o `/admin/`.
   `/admin/`, grava a data/hora, o usuário digitado, o motivo (senha incorreta, usuário não cadastrado ou
   desativado), o IP e o navegador. A senha digitada nunca é gravada. No Railway, o IP vem do cabeçalho
   `X-Forwarded-For`: vale o primeiro endereço, que é o de quem acessou (os seguintes são proxies internos do Railway).
+
+## Listas: busca e paginação
+
+As telas **Clientes**, **Veículos**, **Peças**, **Manutenções** e **Usuários** têm um campo **Buscar**, no mesmo estilo da
+busca de veículos da tela de manutenção: um único texto procurado em vários campos ao mesmo tempo, sem
+diferenciar maiúsculas.
+
+| Tela | A busca procura em |
+|---|---|
+| Clientes | nome, CPF, e-mail, telefone, cidade e ID |
+| Veículos | nome e CPF do cliente, marca, modelo, placa, cor, ano e ID |
+| Peças | nome, marca e ID |
+| Manutenções | nome e CPF do cliente, marca, modelo, placa, descrição, ano do veículo e ID |
+| Usuários (só administradores) | usuário, nome, sobrenome e e-mail |
+
+As listas, as duas abas da tela **Auditoria** e as tabelas do Painel Gerencial usam a mesma paginação:
+10, 25, 50 ou 100 itens por página (padrão 10). A busca e a paginação ficam na URL,
+então dá para voltar ou compartilhar o link; uma nova busca volta para a primeira página e mantém a quantidade
+por página.
 
 ## Painel gerencial
 
@@ -99,7 +119,7 @@ Os testes automatizados usam o framework de testes do Django e cobrem:
 | `manutencoes` | cadastro/edição/exclusão, cálculo de datas, peças usadas e custo total, painel gerencial, projeção de peças (média do mesmo mês, média geral, período de até 12 meses), paginação das tabelas e relatório PDF, busca de veículos e aviso de revisão por e-mail |
 | `usuarios` | login/logout, páginas protegidas, acesso só para administradores, cadastro/edição/exclusão, não excluir a si mesmo, nunca ficar sem usuários e administrador inicial |
 | `auditoria` | inclusão/alteração/exclusão registradas com usuário e campos alterados, exclusão em cascata, senha oculta, alterações do sistema, tela com filtros e paginação, resumo nas telas de detalhe, transação por requisição, logins malsucedidos (motivo, IP, senha nunca gravada, tela e filtros) |
-| `flowmigao` | acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
+| `flowmigao` | busca e paginação das listas (campos buscados, itens por página, links que mantêm a busca); acessibilidade: estrutura das páginas, títulos, tabelas, erros ligados aos campos, modais e barra de fonte/contraste |
 
 Para rodar localmente:
 

@@ -7,6 +7,7 @@
 <div class="acoes-topo">
     <a class="btn" href="{% url 'manutencoes_novo' %}">Nova Manutenção</a>
 </div>
+{% include 'includes/busca_lista.html' with alvo='manutenções' %}
 <div class="table-responsive" role="region" aria-labelledby="tabela-manutencoes" tabindex="0">
     <table>
         <caption id="tabela-manutencoes" class="visually-hidden">Lista de manutenções cadastradas</caption>
@@ -42,10 +43,11 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="9">Nenhuma manutenção cadastrada.</td>
+                <td colspan="9">{% if busca %}Nenhuma manutenção encontrada.{% else %}Nenhuma manutenção cadastrada.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% include 'includes/paginacao_tabela.html' with tabela=tabela rotulo=rotulo_itens %}
 {% endblock %}

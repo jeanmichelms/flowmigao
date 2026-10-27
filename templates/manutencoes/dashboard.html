@@ -127,7 +127,7 @@
             </tfoot>
         </table>
     </div>
-    {% include 'manutencoes/paginacao_tabela.html' with tabela=tabela_projecao rotulo='peças' %}
+    {% include 'includes/paginacao_tabela.html' with tabela=tabela_projecao rotulo='peças' %}
     <p class="ajuda">
         <strong>Como é calculado:</strong> a quantidade de cada peça em um mês é a média do que foi usado no mesmo mês
         dos anos anteriores ("Base do cálculo" mostra quantos anos entraram na média), arredondada para o inteiro mais próximo.
@@ -181,7 +181,7 @@
             </tbody>
         </table>
     </div>
-    {% include 'manutencoes/paginacao_tabela.html' with tabela=tabela_historico rotulo='meses' %}
+    {% include 'includes/paginacao_tabela.html' with tabela=tabela_historico rotulo='meses' %}
 </section>
 
 <style>
@@ -380,41 +380,6 @@
         filter: brightness(0.92);
     }
 
-    /* Paginação das tabelas: itens por página à esquerda, páginas à direita */
-    .paginacao-tabela {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px 24px;
-        margin: -4px 0 16px;
-    }
-    .por-pagina {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-    }
-    .por-pagina label {
-        display: inline;
-        margin: 0;
-    }
-    .por-pagina select {
-        width: auto;
-        padding: 6px 10px;
-    }
-    .paginacao-tabela .btn {
-        margin: 0;
-        padding: 6px 12px;
-    }
-    .paginacao-resumo {
-        margin: 0;
-        color: #4b5563;
-        font-variant-numeric: tabular-nums;
-    }
-    .paginacao-tabela .paginacao {
-        margin-left: auto;
-    }
     .nota-total {
         font-weight: normal;
         font-size: 0.85rem;
@@ -450,21 +415,6 @@
         .form-projecao-campos {
             grid-template-columns: 1fr;
         }
-        /* Paginação no celular: rótulo em cima do select + Aplicar; "Página x de y" em cima dos botões */
-        .paginacao-tabela {
-            flex-direction: column;
-            align-items: stretch;
-        }
-        .por-pagina label {
-            flex-basis: 100%;
-        }
-        .paginacao-tabela .paginacao {
-            margin-left: 0;
-        }
-        .paginacao-tabela .paginacao span {
-            flex-basis: 100%;
-            order: -1;
-        }
         .painel-secao {
             padding: 14px;
         }
@@ -480,7 +430,6 @@
         color: #fff !important;
         border-color: #fff !important;
     }
-    html.alto-contraste .paginacao-resumo,
     html.alto-contraste .nota-total,
     html.alto-contraste .painel-subtitulo,
     html.alto-contraste .card-titulo,

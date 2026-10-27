@@ -1,13 +1,19 @@
 from django.urls import reverse_lazy
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView, DetailView
+
+from flowmigao.paginacao import ListaComBuscaMixin
 from .models import Cliente
 from .forms import ClienteForm
 
 
-class ClienteListView(ListView):
+class ClienteListView(ListaComBuscaMixin, ListView):
     model = Cliente
     template_name = 'clientes/lista.html'
     context_object_name = 'clientes'
+    campos_busca = ['nome', 'cpf', 'email', 'telefone', 'cidade']
+    campos_busca_numericos = ['id']
+    rotulo_itens = 'clientes'
+    ajuda_busca = 'Nome, CPF, e-mail, telefone ou cidade.'
 
 
 class ClienteCreateView(CreateView):

@@ -7,6 +7,7 @@
 <div class="acoes-topo">
     <a class="btn" href="{% url 'pecas_nova' %}">Nova Peça</a>
 </div>
+{% include 'includes/busca_lista.html' with alvo='peças' %}
 <div class="table-responsive" role="region" aria-labelledby="tabela-pecas" tabindex="0">
     <table>
         <caption id="tabela-pecas" class="visually-hidden">Lista de peças cadastradas</caption>
@@ -33,10 +34,11 @@
             </tr>
             {% empty %}
             <tr>
-                <td colspan="5">Nenhuma peça cadastrada.</td>
+                <td colspan="5">{% if busca %}Nenhuma peça encontrada.{% else %}Nenhuma peça cadastrada.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% include 'includes/paginacao_tabela.html' with tabela=tabela rotulo=rotulo_itens %}
 {% endblock %}

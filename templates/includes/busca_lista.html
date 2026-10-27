@@ -1,0 +1,20 @@
+{% comment %}
+Busca por texto de uma lista (ListaComBuscaMixin). Uso: {% include 'includes/busca_lista.html' with alvo='clientes' %}
+Uma nova busca volta para a primeira página e mantém a quantidade de itens por página.
+{% endcomment %}
+<form method="get" class="busca-lista" role="search" aria-label="Buscar {{ alvo }}">
+    {% for nome, valor in ocultos_busca %}<input type="hidden" name="{{ nome }}" value="{{ valor }}">{% endfor %}
+    <label for="id_q">Buscar</label>
+    <div class="busca-lista-campo">
+        <input type="search" name="q" id="id_q" value="{{ busca }}" maxlength="100"{% if ajuda_busca %} aria-describedby="id_q_ajuda"{% endif %}>
+        <button class="btn" type="submit">Buscar</button>
+        {% if busca %}<a class="btn btn-secondary" href="?{% for nome, valor in ocultos_busca %}{{ nome|urlencode }}={{ valor|urlencode }}{% if not forloop.last %}&amp;{% endif %}{% endfor %}">Limpar busca</a>{% endif %}
+    </div>
+    {% if ajuda_busca %}<div class="ajuda" id="id_q_ajuda">{{ ajuda_busca }}</div>{% endif %}
+</form>
+
+{% if busca %}
+<p class="resultado-busca" role="status">
+    {% with total=tabela.pagina.paginator.count %}{{ total }} {% if total == 1 %}resultado{% else %}resultados{% endif %} para <strong>“{{ busca }}”</strong>.{% endwith %}
+</p>
+{% endif %}

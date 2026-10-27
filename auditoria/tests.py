@@ -255,13 +255,26 @@ class TelaDeAuditoriaTests(TestCase):
         self.assertContains(resposta, 'href="#id_data_fim"')
 
     def test_paginacao_mantem_os_filtros(self):
-        for numero in range(55):
+        for numero in range(15):
             Peca.objects.create(nome=f'Peça {numero}', preco_custo=1)
 
         resposta = self.client.get(reverse('auditoria_lista'), {'tipo': 'manutencoes.peca'})
 
-        self.assertEqual(len(resposta.context['registros']), 50)
-        self.assertContains(resposta, 'href="?tipo=manutencoes.peca&amp;page=2"')
+        # Mesma paginação das outras listas: 10 por padrão (15 peças + a do setUp)
+        self.assertEqual(len(resposta.context['registros']), 10)
+        self.assertContains(resposta, '1–10 de 16 registros')
+        self.assertContains(resposta, 'href="?tipo=manutencoes.peca&amp;pagina=2"')
+
+    def test_escolher_itens_por_pagina(self):
+        for numero in range(15):
+            Peca.objects.create(nome=f'Peça {numero}', preco_custo=1)
+
+        resposta = self.client.get(reverse('auditoria_lista'), {'tipo': 'manutencoes.peca', 'por_pagina': '25'})
+
+        self.assertEqual(len(resposta.context['registros']), 16)  # 15 peças + a do setUp
+        self.assertContains(resposta, '16 registros encontrados.')
+        # Filtrar de novo mantém a quantidade escolhida
+        self.assertContains(resposta, '<input type="hidden" name="por_pagina" value="25">', html=True)
 
 
 class ResumoNoDetalheTests(TestCase):

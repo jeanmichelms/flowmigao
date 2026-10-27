@@ -156,3 +156,17 @@ class ClienteBuscaViewTests(TestCase):
 
     def test_nao_encontra_nada(self):
         self.assertEqual(self.buscar('inexistente'), [])
+
+    def test_informa_o_total_para_o_modal_avisar_do_limite(self):
+        for i in range(50):
+            Cliente.objects.create(nome=f'Cliente {i:02d}', cpf=f'000.000.000-{i:02d}', email=f'c{i}@example.com')
+
+        dados = self.client.get(reverse('veiculos_buscar_clientes'), {'q': ''}).json()
+
+        # Só os 50 primeiros vêm na resposta, mas o total mostra que há mais
+        self.assertEqual((len(dados['results']), dados['total'], dados['limite']), (50, 52, 50))
+
+    def test_modal_tem_aviso_de_limite(self):
+        resposta = self.client.get(reverse('veiculos_novo'))
+
+        self.assertContains(resposta, '<p class="aviso-limite" id="aviso-limite-clientes" hidden></p>', html=True)

@@ -6,12 +6,18 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView, D
 from .models import Veiculo
 from .forms import VeiculoForm
 from clientes.models import Cliente
+from flowmigao.paginacao import LIMITE_RESULTADOS_MODAL, ListaComBuscaMixin
 
 
-class VeiculoListView(ListView):
+class VeiculoListView(ListaComBuscaMixin, ListView):
     model = Veiculo
+    queryset = Veiculo.objects.select_related('cliente')
     template_name = 'veiculos/lista.html'
     context_object_name = 'veiculos'
+    campos_busca = ['cliente__nome', 'cliente__cpf', 'marca', 'modelo', 'placa', 'cor']
+    campos_busca_numericos = ['id', 'ano']
+    rotulo_itens = 'veículos'
+    ajuda_busca = 'Cliente, CPF, marca, modelo, placa, cor ou ano.'
 
 
 class VeiculoCreateView(CreateView):
@@ -97,7 +103,8 @@ class ClienteBuscaView(View):
 
             clientes = clientes.filter(condicao)
 
-        clientes = clientes.order_by('nome')[:50]
+        total = clientes.count()
+        clientes = clientes.order_by('nome')[:LIMITE_RESULTADOS_MODAL]
 
         resultados = [
             {
@@ -110,4 +117,4 @@ class ClienteBuscaView(View):
             for cliente in clientes
         ]
 
-        return JsonResponse({'results': resultados})
+        return JsonResponse({'results': resultados, 'total': total, 'limite': LIMITE_RESULTADOS_MODAL})

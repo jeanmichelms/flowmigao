@@ -55,6 +55,8 @@
             <input type="search" id="filtro-veiculo" placeholder="Digite para filtrar veículos">
         </div>
 
+        <p class="aviso-limite" id="aviso-limite-veiculos" hidden></p>
+
         <div class="table-responsive">
             <table>
                 <caption class="visually-hidden">Resultado da pesquisa de veículos</caption>
@@ -144,6 +146,7 @@
         const fecharModalBtn = document.getElementById('fechar-modal-veiculo');
         const filtroInput = document.getElementById('filtro-veiculo');
         const resultadoBody = document.getElementById('resultado-veiculos');
+        const avisoLimite = document.getElementById('aviso-limite-veiculos');
         const veiculoHiddenInput = document.getElementById('id_veiculo');
         const veiculoBuscaInput = document.getElementById('id_veiculo_busca');
         const buscarUrl = "{% url 'manutencoes_buscar_veiculos' %}";
@@ -165,7 +168,21 @@
                 .replace(/'/g, '&#39;');
         }
 
-        function renderResultados(veiculos) {
+        // A busca traz no máximo os primeiros resultados (limite do servidor): avisa quando há mais
+        function mostrarAvisoLimite(exibidos, total) {
+            const cortou = total > exibidos;
+            avisoLimite.hidden = !cortou;
+            avisoLimite.innerHTML = cortou
+                ? `<span aria-hidden="true">⚠</span> Mostrando os ${exibidos} primeiros de ${total} veículos encontrados. Refine a busca para ver os outros.`
+                : '';
+            return cortou;
+        }
+
+        function renderResultados(dados) {
+            const veiculos = dados.results || [];
+            const total = dados.total ?? veiculos.length;
+            const cortou = mostrarAvisoLimite(veiculos.length, total);
+
             if (!veiculos.length) {
                 resultadoBody.innerHTML = '<tr><td colspan="7">Nenhum veículo encontrado.</td></tr>';
                 FlowMigao.anunciar('Nenhum veículo encontrado.');
@@ -187,9 +204,15 @@
                 `;
             }).join('');
 
-            FlowMigao.anunciar(
-                veiculos.length === 1 ? '1 veículo encontrado.' : `${veiculos.length} veículos encontrados.`
-            );
+            if (cortou) {
+                FlowMigao.anunciar(
+                    `${total} veículos encontrados. Mostrando os ${veiculos.length} primeiros; refine a busca para ver os outros.`
+                );
+            } else {
+                FlowMigao.anunciar(
+                    veiculos.length === 1 ? '1 veículo encontrado.' : `${veiculos.length} veículos encontrados.`
+                );
+            }
 
             resultadoBody.querySelectorAll('.btn-selecionar').forEach(function (botao) {
                 botao.addEventListener('click', function (event) {
@@ -205,6 +228,7 @@
         function buscarVeiculos(termo) {
             const url = `${buscarUrl}?q=${encodeURIComponent(termo || '')}`;
             resultadoBody.innerHTML = '<tr><td colspan="7">Carregando...</td></tr>';
+            mostrarAvisoLimite(0, 0);
 
             fetch(url, {
                 headers: {
@@ -215,7 +239,7 @@
                     return response.json();
                 })
                 .then(function (data) {
-                    renderResultados(data.results || []);
+                    renderResultados(data);
                 })
                 .catch(function () {
                     resultadoBody.innerHTML = '<tr><td colspan="7">Erro ao buscar veículos.</td></tr>';
